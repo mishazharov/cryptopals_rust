@@ -21,7 +21,7 @@ score_dict = {
     'E': 5,
 }
 
-def score_bytearrar(arr: bytearray) -> int:
+def score_bytearray(arr: bytearray) -> int:
     res = 0
 
     for i in arr:
@@ -41,7 +41,7 @@ if __name__ == "__main__":
         if not res.isascii():
             continue
 
-        res_score = score_bytearrar(res)
+        res_score = score_bytearray(res)
 
         cand_arr.append((res, res_score, i))
     cand_arr.sort(key=lambda b: b[1])
