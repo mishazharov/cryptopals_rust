@@ -1,5 +1,13 @@
-pub fn rand() -> u32 {
-        2 + 2
+extern crate hex;
+
+// In place repeating key xor encryption
+pub fn enc_repeating_key_xor(key: &[u8], content: &mut [u8]) {
+    let modulo = key.len();
+    let mut counter = 0;
+    for i in 0..content.len() {
+        content[i] ^= key[counter];
+        counter = (counter + 1) % modulo;
+    }
 }
 
 #[cfg(test)]
@@ -7,7 +15,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_add() {
-        assert_eq!(rand(), 4);
+    fn test_repeating_key_xor() {
+        let mut content_1 = String::from(
+            "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal"
+        ).into_bytes();
+
+        enc_repeating_key_xor(b"ICE", &mut content_1);
+
+        assert_eq!(
+            hex::encode(content_1),
+            "0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a262263\
+             24272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b2028\
+             3165286326302e27282f"
+        );
     }
 }
