@@ -3,11 +3,10 @@ extern crate hex;
 // In place repeating key xor encryption
 pub fn enc_repeating_key_xor(key: &[u8], content: &mut [u8]) {
     let modulo = key.len();
+
+    // Example at https://doc.rust-lang.org/std/iter/struct.Map.html#notes-about-side-effects
     let mut counter = 0;
-    for i in 0..content.len() {
-        content[i] ^= key[counter];
-        counter = (counter + 1) % modulo;
-    }
+    content.iter_mut().for_each(|x| {*x ^= key[counter]; counter = (counter + 1) % modulo});
 }
 
 #[cfg(test)]

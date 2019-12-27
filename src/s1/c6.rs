@@ -6,19 +6,15 @@ pub fn xor_bytes(str_1: &[u8], str_2: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> 
     if str_1.len() != str_2.len() {
         return Err(From::from("bytes are not of equal length"))
     }
-    let mut res = vec![0; str_1.len()];
-    for i in 0..str_1.len() {
-        res[i] = str_1[i] ^ str_2[i]
-    }
+    // https://users.rust-lang.org/t/how-to-xor-two-vec-u8/31071/2
+    let res = str_1.iter().zip(str_2.iter()).map(|(&x,&y)| x ^ y).collect();
     Ok(res)
 }
 
 pub fn hamming_distance(str_1: &[u8], str_2: &[u8]) -> Result<u32, Box<dyn Error>> {
     let xored_bytes = xor_bytes(str_1, str_2)?;
     let mut res: u32 = 0;
-    for i in xored_bytes {
-        res += i.count_ones();
-    }
+    xored_bytes.iter().for_each(|x| res += x.count_ones());
     Ok(res)
 }
 
