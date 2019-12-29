@@ -56,7 +56,6 @@ pub fn score_vec(slice_to_score: &[u8]) -> usize {
     for i in 0..freq.len() {
         let lhs = freq[i] * 100 / total;
         let rhs = score_byte(i as u8 + ('a' as u8));
-        // println!("lhs {} rhs {}", lhs, rhs);
 
         if lhs > rhs {
             res += lhs - rhs;
@@ -65,8 +64,6 @@ pub fn score_vec(slice_to_score: &[u8]) -> usize {
         }
 
     }
-
-    // println!("res {}", res);
 
     res
 }
