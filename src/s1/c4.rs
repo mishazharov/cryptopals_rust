@@ -1,4 +1,4 @@
-use super::c5::enc_repeating_key_xor;
+use super::c5::xor_encrypt;
 extern crate hex;
 
 pub struct XorResult {
@@ -11,7 +11,7 @@ fn ascii_lower(c: u8) -> u8 {
     (c as char).to_lowercase().nth(0).unwrap() as u8
 }
 
-pub fn score_u8(c: u8) -> usize {
+pub fn score_byte(c: u8) -> usize {
     let c_lower: u8 = ascii_lower(c);
     match c_lower as char {
         'e' => 13,
@@ -40,7 +40,7 @@ pub fn score_u8(c: u8) -> usize {
     }
 }
 
-pub fn score_vec_u8(slice_to_score: &[u8]) -> usize {
+pub fn score_vec(slice_to_score: &[u8]) -> usize {
     let mut freq = vec![0; 26];
     let total = slice_to_score.len();
 
@@ -55,7 +55,7 @@ pub fn score_vec_u8(slice_to_score: &[u8]) -> usize {
 
     for i in 0..freq.len() {
         let lhs = freq[i] * 100 / total;
-        let rhs = score_u8(i as u8 + ('a' as u8));
+        let rhs = score_byte(i as u8 + ('a' as u8));
         // println!("lhs {} rhs {}", lhs, rhs);
 
         if lhs > rhs {
@@ -71,31 +71,45 @@ pub fn score_vec_u8(slice_to_score: &[u8]) -> usize {
     res
 }
 
-pub fn break_single_xor(slice_to_break: &[u8]) -> XorResult {
+pub fn xor_break(slice_to_break: &[u8]) -> XorResult {
     
-    let mut min = usize::max_value();
-    let mut plaintext: Vec<u8> = Default::default();
-    let mut key: u8 = 0;
+    let mut res = XorResult {
+        weight: usize::max_value(),
+        plaintext: Default::default(),
+        key: 0
+    };
 
     for i in 0..=255 {
         let mut temp_vec = slice_to_break.to_vec();
-        enc_repeating_key_xor(&[i], &mut temp_vec);
-        let score = score_vec_u8(&temp_vec);
+        xor_encrypt(&[i], &mut temp_vec);
+        let score = score_vec(&temp_vec);
 
-        println!("{} score: {}", String::from_utf8_lossy(&temp_vec), score);
-
-        if score < min {
-            min = score;
-            plaintext = temp_vec;
-            key = i;
+        if score < res.weight {
+            res.weight = score;
+            res.plaintext = temp_vec;
+            res.key = i;
         }
     }
 
-    let res = XorResult {
-        weight: min,
-        plaintext: plaintext,
-        key: key
+    res
+}
+
+pub fn xor_break_multi(vecs: &Vec<Vec<u8>>) -> XorResult {
+
+    let mut res = XorResult {
+        weight: usize::max_value(),
+        plaintext: Default::default(),
+        key: 0
     };
+
+    for vec in vecs {
+        let cand: XorResult = xor_break(vec);
+
+        if cand.weight < res.weight {
+            res = cand;
+        }
+    }
+
     res
 }
 
@@ -104,17 +118,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_break_single_xor() {
-        let c = break_single_xor(
+    fn test_xor_break() {
+        let c = xor_break(
             &hex::decode(
                 "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
             ).unwrap()
-        );
-        println!(
-            "plaintext: {} weight: {} key: {}",
-            String::from_utf8_lossy(&c.plaintext),
-            &c.weight,
-            &c.key
         );
 
         // This is for challenge 3
@@ -122,5 +130,23 @@ mod tests {
             "Cooking MC's like a pound of bacon",
             String::from_utf8_lossy(&c.plaintext)
         )
+    }
+
+    #[test]
+    fn test_xor_break_multi() {
+        
+        // `4.txt` can be found here: https://cryptopals.com/static/challenge-data/4.txt
+        let file_contents: &'static str = include_str!("4.txt");
+        let split_file_contents: Vec<&str> = file_contents.split('\n').collect();
+
+        let bytes_vecs: Vec<Vec<u8>> = split_file_contents.iter().map(
+            |x| hex::decode(x).unwrap()
+        ).collect();
+
+        let res: XorResult = xor_break_multi(&bytes_vecs);
+        assert_eq!(
+            "Now that the party is jumping\n",
+            String::from_utf8_lossy(&res.plaintext)
+        );
     }
 }

@@ -2,7 +2,7 @@ use std::error::Error;
 
 extern crate hex;
 
-pub fn xor_bytes(str_1: &[u8], str_2: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
+pub fn xor_vecs(str_1: &[u8], str_2: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
     if str_1.len() != str_2.len() {
         return Err(From::from("bytes are not of equal length"))
     }
@@ -12,7 +12,7 @@ pub fn xor_bytes(str_1: &[u8], str_2: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> 
 }
 
 pub fn hamming_distance(str_1: &[u8], str_2: &[u8]) -> Result<u32, Box<dyn Error>> {
-    let xored_bytes: Vec<u8> = xor_bytes(str_1, str_2)?;
+    let xored_bytes: Vec<u8> = xor_vecs(str_1, str_2)?;
     let mut res: u32 = 0;
     xored_bytes.iter().for_each(|&x| res += x.count_ones());
     Ok(res)
@@ -28,9 +28,9 @@ mod tests {
     }
 
     #[test]
-    fn test_xor_bytes() {
+    fn test_xor_vecs() {
         assert_eq!(
-            xor_bytes(
+            xor_vecs(
                 &hex::decode("1c0111001f010100061a024b53535009181c").unwrap(),
                 &hex::decode("686974207468652062756c6c277320657965").unwrap()
             ).unwrap(),

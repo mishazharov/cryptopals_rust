@@ -1,7 +1,7 @@
 extern crate hex;
 
 // In place repeating key xor encryption
-pub fn enc_repeating_key_xor(key: &[u8], content: &mut [u8]) {
+pub fn xor_encrypt(key: &[u8], content: &mut [u8]) {
     let modulo = key.len();
 
     // Example at https://doc.rust-lang.org/std/iter/struct.Map.html#notes-about-side-effects
@@ -14,12 +14,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_repeating_key_xor() {
+    fn test_xor_encrypt() {
         let mut content_1 = String::from(
             "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal"
         ).into_bytes();
 
-        enc_repeating_key_xor(b"ICE", &mut content_1);
+        xor_encrypt(b"ICE", &mut content_1);
 
         assert_eq!(
             hex::encode(content_1),
