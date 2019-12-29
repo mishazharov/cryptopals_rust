@@ -1,8 +1,12 @@
 extern crate hex;
 
-// In place repeating key xor encryption
+// In place repeating key xor encryption (solution for challenge 5)
 pub fn xor_encrypt(key: &[u8], content: &mut [u8]) {
     let modulo = key.len();
+
+    if modulo == 0 {
+        return;
+    }
 
     // Example at https://doc.rust-lang.org/std/iter/struct.Map.html#notes-about-side-effects
     let mut counter = 0;

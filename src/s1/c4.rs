@@ -1,17 +1,17 @@
 use super::c5::xor_encrypt;
 extern crate hex;
 
-pub struct XorResult {
-    plaintext: Vec<u8>,
-    key: u8,
-    weight: usize
+pub struct XorSingleResult {
+    pub plaintext: Vec<u8>,
+    pub key: u8,
+    pub weight: u32
 }
 
 fn ascii_lower(c: u8) -> u8 {
     (c as char).to_lowercase().nth(0).unwrap() as u8
 }
 
-pub fn score_byte(c: u8) -> usize {
+fn score_byte(c: u8) -> u32 {
     let c_lower: u8 = ascii_lower(c);
     match c_lower as char {
         'e' => 13,
@@ -40,8 +40,8 @@ pub fn score_byte(c: u8) -> usize {
     }
 }
 
-pub fn score_vec(slice_to_score: &[u8]) -> usize {
-    let mut freq = vec![0; 26];
+fn score_vec(slice_to_score: &[u8]) -> u32 {
+    let mut freq: Vec<u32> = vec![0; 26];
     let total = slice_to_score.len();
 
     for i in slice_to_score {
@@ -54,8 +54,8 @@ pub fn score_vec(slice_to_score: &[u8]) -> usize {
     let mut res = 0;
 
     for i in 0..freq.len() {
-        let lhs = freq[i] * 100 / total;
-        let rhs = score_byte(i as u8 + ('a' as u8));
+        let lhs: u32 = freq[i] * 100 / total as u32;
+        let rhs: u32 = score_byte(i as u8 + ('a' as u8));
 
         if lhs > rhs {
             res += lhs - rhs;
@@ -68,10 +68,11 @@ pub fn score_vec(slice_to_score: &[u8]) -> usize {
     res
 }
 
-pub fn xor_break(slice_to_break: &[u8]) -> XorResult {
+// Solution for challenge 3
+pub fn xor_break(slice_to_break: &[u8]) -> XorSingleResult {
     
-    let mut res = XorResult {
-        weight: usize::max_value(),
+    let mut res = XorSingleResult {
+        weight: u32::max_value(),
         plaintext: vec![0; slice_to_break.len()],
         key: 0
     };
@@ -93,16 +94,17 @@ pub fn xor_break(slice_to_break: &[u8]) -> XorResult {
     res
 }
 
-pub fn xor_break_multi(vecs: &Vec<Vec<u8>>) -> XorResult {
+// This function is the solution for challenge 4
+fn xor_break_multi(vecs: &Vec<Vec<u8>>) -> XorSingleResult {
 
-    let mut res = XorResult {
-        weight: usize::max_value(),
+    let mut res = XorSingleResult {
+        weight: u32::max_value(),
         plaintext: Default::default(),
         key: 0
     };
 
     for vec in vecs {
-        let cand: XorResult = xor_break(vec);
+        let cand: XorSingleResult = xor_break(vec);
 
         if cand.weight < res.weight {
             res = cand;
@@ -142,7 +144,7 @@ mod tests {
             |x| hex::decode(x).unwrap()
         ).collect();
 
-        let res: XorResult = xor_break_multi(&bytes_vecs);
+        let res: XorSingleResult = xor_break_multi(&bytes_vecs);
         assert_eq!(
             "Now that the party is jumping\n",
             String::from_utf8_lossy(&res.plaintext)
