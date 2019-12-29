@@ -72,18 +72,20 @@ pub fn xor_break(slice_to_break: &[u8]) -> XorResult {
     
     let mut res = XorResult {
         weight: usize::max_value(),
-        plaintext: Default::default(),
+        plaintext: vec![0; slice_to_break.len()],
         key: 0
     };
 
+    let mut temp_vec = vec![0; slice_to_break.len()];
+
     for i in 0..=255 {
-        let mut temp_vec = slice_to_break.to_vec();
+        temp_vec.copy_from_slice(slice_to_break);
         xor_encrypt(&[i], &mut temp_vec);
         let score = score_vec(&temp_vec);
 
         if score < res.weight {
             res.weight = score;
-            res.plaintext = temp_vec;
+            res.plaintext.copy_from_slice(&temp_vec);
             res.key = i;
         }
     }
