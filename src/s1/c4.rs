@@ -1,5 +1,6 @@
-use super::c5::xor_encrypt;
 extern crate hex;
+
+use super::c5::xor_encrypt;
 
 pub struct XorSingleResult {
     pub plaintext: Vec<u8>,

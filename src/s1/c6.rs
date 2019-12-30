@@ -1,10 +1,14 @@
-use std::cmp;
-use std::error::Error;
-use super::c4::xor_break;
-use super::c5::xor_encrypt;
-
 extern crate base64;
 extern crate hex;
+extern crate openssl;
+
+use std::cmp;
+use std::error::Error;
+
+use openssl::sha;
+
+use super::c4::xor_break;
+use super::c5::xor_encrypt;
 
 struct XorRepeatingResult {
     plaintext: Vec<u8>,
@@ -78,6 +82,12 @@ fn xor_break_repeating(byte_arr: &[u8]) -> XorRepeatingResult {
     res
 }
 
+pub fn base64_from_file(file: &str) -> Vec<u8> {
+    let base64_string: String = file.split_whitespace().collect();
+    let raw_bytes: Vec<u8> = base64::decode(&base64_string).unwrap();
+    raw_bytes
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -100,15 +110,18 @@ mod tests {
 
     #[test]
     fn test_xor_break_repeating() {
-        // `4.txt` can be found here: https://cryptopals.com/static/challenge-data/6.txt
+        // `6.txt` can be found here: https://cryptopals.com/static/challenge-data/6.txt
         let file_contents: &'static str = include_str!("6.txt");
-        let base64_string: String = file_contents.split_whitespace().collect();
-        let raw_bytes: Vec<u8> = base64::decode(&base64_string).unwrap();
+        let raw_bytes: Vec<u8> = base64_from_file(file_contents);
 
         let res = xor_break_repeating(&raw_bytes);
         assert_eq!(String::from_utf8_lossy(&res.key), "Terminator X: Bring the noise");
 
-        let plaintext_str = String::from_utf8_lossy(&res.plaintext);
-        assert!(plaintext_str.starts_with("I\'m back and I\'m ringin\'"));
+        assert_eq!(
+            hex::decode(
+                "24df84533fc2778495577c844bcf3fe1d4d17c68d8c5cbc5a308286db58c69b6"
+            ).unwrap(),
+            sha::sha256(&res.plaintext)
+        );
     }
 }
