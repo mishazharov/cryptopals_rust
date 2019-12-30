@@ -9,6 +9,7 @@ use openssl::sha;
 
 use super::c4::xor_break;
 use super::c5::xor_encrypt;
+use crate::decode_utils::base64_from_str;
 
 struct XorRepeatingResult {
     plaintext: Vec<u8>,
@@ -62,10 +63,11 @@ fn xor_break_repeating(byte_arr: &[u8]) -> XorRepeatingResult {
     let key_size: usize = key_sizes[0].0;
     let mut key: Vec<u8> = Vec::new();
     let mut plaintext: Vec<u8> = byte_arr.to_vec();
+    let num_blocks = byte_arr.len() / key_size;
 
-    let mut to_decode: Vec<u8> = vec![0; byte_arr.len() / key_size];
+    let mut to_decode: Vec<u8> = vec![0; num_blocks];
     for x in 0..key_size {
-        for y in 0..(byte_arr.len() / key_size) {
+        for y in 0..num_blocks {
             to_decode[y] = byte_arr[y * key_size + x]
         }
         let col_res = xor_break(&to_decode);
@@ -80,12 +82,6 @@ fn xor_break_repeating(byte_arr: &[u8]) -> XorRepeatingResult {
     };
 
     res
-}
-
-pub fn base64_from_file(file: &str) -> Vec<u8> {
-    let base64_string: String = file.split_whitespace().collect();
-    let raw_bytes: Vec<u8> = base64::decode(&base64_string).unwrap();
-    raw_bytes
 }
 
 #[cfg(test)]
@@ -112,7 +108,7 @@ mod tests {
     fn test_xor_break_repeating() {
         // `6.txt` can be found here: https://cryptopals.com/static/challenge-data/6.txt
         let file_contents: &'static str = include_str!("6.txt");
-        let raw_bytes: Vec<u8> = base64_from_file(file_contents);
+        let raw_bytes: Vec<u8> = base64_from_str(file_contents);
 
         let res = xor_break_repeating(&raw_bytes);
         assert_eq!(String::from_utf8_lossy(&res.key), "Terminator X: Bring the noise");

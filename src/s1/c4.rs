@@ -1,6 +1,7 @@
 extern crate hex;
 
 use super::c5::xor_encrypt;
+use crate::decode_utils::hex_arr_from_str;
 
 pub struct XorSingleResult {
     pub plaintext: Vec<u8>,
@@ -139,11 +140,7 @@ mod tests {
         
         // `4.txt` can be found here: https://cryptopals.com/static/challenge-data/4.txt
         let file_contents: &'static str = include_str!("4.txt");
-        let split_file_contents: Vec<&str> = file_contents.split('\n').collect();
-
-        let bytes_vecs: Vec<Vec<u8>> = split_file_contents.iter().map(
-            |x| hex::decode(x).unwrap()
-        ).collect();
+        let bytes_vecs = hex_arr_from_str(file_contents);
 
         let res: XorSingleResult = xor_break_multi(&bytes_vecs);
         assert_eq!(

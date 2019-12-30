@@ -3,7 +3,7 @@ extern crate openssl;
 use openssl::symm::{decrypt, Cipher};
 use openssl::sha;
 
-use super::c6::base64_from_file;
+use crate::decode_utils::base64_from_str;
 
 #[cfg(test)]
 mod tests {
@@ -13,8 +13,9 @@ mod tests {
     fn test_aes_ecb () {
         let key = b"YELLOW SUBMARINE";
 
+        // https://cryptopals.com/static/challenge-data/7.txt
         let file_contents: &'static str = include_str!("7.txt");
-        let raw_bytes: Vec<u8> = base64_from_file(file_contents);
+        let raw_bytes: Vec<u8> = base64_from_str(file_contents);
 
         let cipher = Cipher::aes_128_ecb();
         let res = decrypt(
