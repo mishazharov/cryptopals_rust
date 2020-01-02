@@ -5,7 +5,7 @@ use openssl::sha;
 use crate::decode_utils::base64_from_str;
 
 use crate::s1::c5::xor_encrypt;
-use crate::consts::*;
+use crate::consts::AES_BLOCK_SIZE;
 
 // Decrypts AES CBC data assuming that it is using PKCS #7 padding
 fn aes_cbc_decrypt(data: &[u8], key: &[u8], iv: &[u8]) -> Vec<u8> {

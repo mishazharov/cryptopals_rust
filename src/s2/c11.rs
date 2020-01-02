@@ -4,7 +4,7 @@ use rand::Rng;
 use openssl::symm::{Cipher, encrypt};
 use crate::s1::c8::is_aes_ecb;
 
-use crate::consts::*;
+use crate::consts::AES_BLOCK_SIZE;
 
 // Returns an array of a random size in the given range, filled with random data
 fn rand_bytes(size_min: usize, size_max: usize) -> Vec<u8> {

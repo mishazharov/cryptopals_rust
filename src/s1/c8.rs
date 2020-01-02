@@ -6,7 +6,7 @@ use std::error::Error;
 
 use std::collections::HashMap;
 
-use crate::consts::*;
+use crate::consts::AES_BLOCK_SIZE;
 
 // The array passed in should be a multiple of 16 if it's ecb
 pub fn is_aes_ecb(candidate: &[u8]) -> Result<bool, Box<dyn Error>> {
