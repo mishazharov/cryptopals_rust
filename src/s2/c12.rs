@@ -43,6 +43,12 @@ mod oracle {
 mod attacker {
     use super::oracle::AesOracle;
 
+    fn are_blocks_equal(block_size: usize, block_num: usize, b1: &[u8], b2: &[u8]) -> bool {
+        let target_block_start = block_num * block_size;
+        let target_block_end = (block_num + 1) * block_size;
+        b1[target_block_start..target_block_end] == b2[target_block_start..target_block_end]
+    }
+
     pub fn get_oracle_block_size(oracle: &AesOracle) -> usize {
 
         let mut size_last = oracle.encrypt(&['A' as u8]).len();
@@ -69,7 +75,6 @@ mod attacker {
         let mut test_vec = vec![0u8; num_bytes];
 
         let target_block_ind = num_bytes / block_size - 1;
-        let target_block_start = target_block_ind * block_size;
         let target_block_end = (target_block_ind + 1) * block_size;
 
         'outer: for i in 0..num_bytes {
@@ -79,8 +84,7 @@ mod attacker {
             loop {
                 let result = oracle.encrypt(&test_vec[i..num_bytes + i]);
 
-                if target[target_block_start..target_block_end] ==
-                   result[target_block_start..target_block_end]
+                if are_blocks_equal(block_size, target_block_ind, &target, &result)
                 {
                     test_vec.push(0);
                     break;
