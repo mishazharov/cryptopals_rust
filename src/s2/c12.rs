@@ -72,7 +72,7 @@ mod attacker {
     pub fn attack_aes_oracle(oracle: &AesOracle) -> Vec<u8> {
         let block_size = get_oracle_block_size(oracle);
         let num_bytes = oracle.encrypt(&[]).len();
-        let mut test_vec = vec![0u8; num_bytes];
+        let mut test_vec = vec![0u8; num_bytes * 2];
 
         let target_block_ind = num_bytes / block_size - 1;
         let target_block_end = (target_block_ind + 1) * block_size;
@@ -86,14 +86,14 @@ mod attacker {
 
                 if are_blocks_equal(block_size, target_block_ind, &target, &result)
                 {
-                    test_vec.push(0);
                     break;
                 }
 
                 // Padding has started here
                 if test_vec[target_block_end - 1 + i] == 255 {
-                    test_vec.pop(); // Pop off 255
-                    test_vec.pop(); // Pop off first padding byte that got through
+                    // We need to subtract two because one of the padding bytes gets through
+                    // and we also have the byte which is 255
+                    test_vec.truncate(num_bytes + i - 2);
                     break 'outer;
                 }
                 test_vec[target_block_end - 1 + i] += 1;
