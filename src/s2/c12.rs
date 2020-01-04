@@ -99,7 +99,6 @@ mod attacker {
                 test_vec[target_block_end - 1 + i] += 1;
             }
         }
-        println!("{:?}", &test_vec);
         let res = test_vec.drain(num_bytes - 1..).collect();
         res
     }
@@ -121,7 +120,6 @@ mod tests {
         assert_eq!(attacker::get_oracle_block_size(&oracle), AES_BLOCK_SIZE);
 
         let res = attacker::attack_aes_oracle(&oracle);
-        println!("{}", String::from_utf8_lossy(&res));
         assert_eq!(base64_secret, base64::encode(&res))
     }
 
