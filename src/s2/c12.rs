@@ -8,6 +8,8 @@ use openssl::symm::{Cipher, encrypt};
 
 use crate::consts::AES_BLOCK_SIZE;
 
+use super::c11::detect_ecb_from_stream;
+
 mod oracle {
     use super::*;
 
@@ -117,6 +119,11 @@ mod tests {
         let key: [u8; AES_BLOCK_SIZE] = rand::thread_rng().gen();
 
         let oracle: AesOracle = AesOracle::new(&key, &secret);
+
+        // Detect ECB as instructions asked us
+        let ciphertext = oracle.encrypt(&['A' as u8; 64]);
+        assert!(detect_ecb_from_stream(&ciphertext));
+
         assert_eq!(attacker::get_oracle_block_size(&oracle), AES_BLOCK_SIZE);
 
         let res = attacker::attack_aes_oracle(&oracle);

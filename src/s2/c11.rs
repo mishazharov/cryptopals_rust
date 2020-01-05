@@ -45,7 +45,7 @@ fn oracle_aes_ecb_cbc(plaintext: &[u8]) -> (bool, Vec<u8>) {
     (use_ecb, res)
 }
 
-fn detect_ecb_from_stream(ciphertext: &[u8]) -> bool {
+pub fn detect_ecb_from_stream(ciphertext: &[u8]) -> bool {
     for i in 0..AES_BLOCK_SIZE {
         let num_blocks = (ciphertext.len() - i) / AES_BLOCK_SIZE;
         if is_aes_ecb(&ciphertext[i..num_blocks * AES_BLOCK_SIZE + i]).unwrap() {
