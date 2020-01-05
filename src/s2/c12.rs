@@ -9,7 +9,7 @@ use crate::aes_utils::*;
 
 use super::c11::detect_ecb_from_stream;
 
-mod oracle {
+pub mod oracle {
     use super::*;
 
     pub struct AesOracle<'a> {
@@ -39,7 +39,8 @@ mod oracle {
         }
 
         pub fn encrypt_with_prefix(&self, plaintext: &[u8]) -> Vec<u8> {
-            let mut plaintext_with_secret: Vec<u8> = plaintext.to_vec();
+            let mut plaintext_with_secret: Vec<u8> = self.prefix.clone();
+            plaintext_with_secret.append(&mut plaintext.to_vec());
             plaintext_with_secret.extend_from_slice(self.secret);
             aes_ecb_encrypt(&self.key, &plaintext_with_secret)
         }

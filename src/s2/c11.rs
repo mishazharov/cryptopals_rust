@@ -20,7 +20,6 @@ fn oracle_aes_ecb_cbc(plaintext: &[u8]) -> (bool, Vec<u8>) {
     let key: [u8; AES_BLOCK_SIZE] = rand::thread_rng().gen();
 
     if use_ecb {
-        let cipher = Cipher::aes_128_ecb();
         let mut encrypted = aes_ecb_encrypt(&key,&plaintext);
         res.append(&mut encrypted);
     } else {
