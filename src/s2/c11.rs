@@ -4,7 +4,7 @@ use rand::Rng;
 use openssl::symm::{Cipher, encrypt};
 use crate::s1::c8::is_aes_ecb;
 
-use crate::consts::AES_BLOCK_SIZE;
+use crate::aes_utils::*;
 
 // Returns an array of a random size in the given range, filled with random data
 fn rand_bytes(size_min: usize, size_max: usize) -> Vec<u8> {
@@ -21,12 +21,7 @@ fn oracle_aes_ecb_cbc(plaintext: &[u8]) -> (bool, Vec<u8>) {
 
     if use_ecb {
         let cipher = Cipher::aes_128_ecb();
-        let mut encrypted = encrypt(
-            cipher,
-            &key,
-            None,
-            &plaintext
-        ).unwrap();
+        let mut encrypted = aes_ecb_encrypt(&key,&plaintext);
         res.append(&mut encrypted);
     } else {
         let cipher = Cipher::aes_128_cbc();

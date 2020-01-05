@@ -1,9 +1,9 @@
 extern crate openssl;
 
-use openssl::symm::{decrypt, Cipher};
 use openssl::sha;
 
 use crate::decode_utils::base64_from_str;
+use crate::aes_utils::*;
 
 #[cfg(test)]
 mod tests {
@@ -17,13 +17,7 @@ mod tests {
         let file_contents: &'static str = include_str!("7.txt");
         let raw_bytes: Vec<u8> = base64_from_str(file_contents);
 
-        let cipher = Cipher::aes_128_ecb();
-        let res = decrypt(
-            cipher,
-            key,
-            None,
-            &raw_bytes
-        ).unwrap();
+        let res = aes_ecb_decrypt(key, &raw_bytes);
 
         assert_eq!(
             hex::decode(

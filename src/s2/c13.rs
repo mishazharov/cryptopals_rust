@@ -1,9 +1,8 @@
 extern crate rand;
 
-use crate::consts::AES_BLOCK_SIZE;
+use crate::aes_utils::*;
 
 use rand::Rng;
-use openssl::symm::{Cipher, decrypt, encrypt};
 
 use super::c9::pad_pkcs7;
 
@@ -36,24 +35,12 @@ impl<'a> EmailOracle <'a> {
         );
         self.uid += 1;
 
-        let cipher = Cipher::aes_128_ecb();
-        encrypt(
-            cipher,
-            self.key,
-            None,
-            plaintext.as_bytes()
-        ).unwrap()
+        aes_ecb_encrypt(self.key, plaintext.as_bytes())
     }
 
     fn cookie_to_object(self, cookie: &[u8]) -> UserAccount {
-        let cipher = Cipher::aes_128_ecb();
         let plaintext = String::from_utf8(
-            decrypt(
-                cipher,
-                self.key,
-                None,
-                cookie
-            ).unwrap()
+            aes_ecb_decrypt(self.key, cookie)
         ).unwrap();
 
         let keys: Vec<&str> = plaintext.split('&').collect();

@@ -1,12 +1,11 @@
 extern crate base64;
 extern crate rand;
-use rand::Rng;
-
 extern crate hex;
 
-use openssl::symm::{Cipher, encrypt};
+use rand::Rng;
+use rand::distributions::Standard;
 
-use crate::consts::AES_BLOCK_SIZE;
+use crate::aes_utils::*;
 
 use super::c11::detect_ecb_from_stream;
 
@@ -15,29 +14,34 @@ mod oracle {
 
     pub struct AesOracle<'a> {
         secret: &'a [u8],
-        key: &'a [u8]
+        key: Vec<u8>,
+        prefix: Vec<u8>
     }
     impl<'a> AesOracle<'a> {
-        pub fn new(key: &'a [u8], secret: &'a [u8]) -> AesOracle<'a> {
-            if key.len() != AES_BLOCK_SIZE {
-                panic!("Inappropriate key length");
-            }
+        pub fn new(secret: &'a [u8]) -> AesOracle<'a> {
+            let mut rng = rand::thread_rng();
+
+            let key: [u8; AES_BLOCK_SIZE] = rng.gen();
+
+            let prefix_len: usize = rng.gen_range(100, 250);
+            let prefix: Vec<u8> = rng.sample_iter(Standard).take(prefix_len).collect();
+
             AesOracle {
                 secret: secret,
-                key: key
+                key: key.to_vec(),
+                prefix: prefix
             }
         }
         pub fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
-            let cipher = Cipher::aes_128_ecb();
             let mut plaintext_with_secret: Vec<u8> = plaintext.to_vec();
             plaintext_with_secret.extend_from_slice(self.secret);
-            let encrypted = encrypt(
-                cipher,
-                self.key,
-                None,
-                &plaintext_with_secret
-            ).unwrap();
-            encrypted
+            aes_ecb_encrypt(&self.key, &plaintext_with_secret)
+        }
+
+        pub fn encrypt_with_prefix(&self, plaintext: &[u8]) -> Vec<u8> {
+            let mut plaintext_with_secret: Vec<u8> = plaintext.to_vec();
+            plaintext_with_secret.extend_from_slice(self.secret);
+            aes_ecb_encrypt(&self.key, &plaintext_with_secret)
         }
     }
 }
@@ -116,9 +120,8 @@ mod tests {
         let secret = base64::decode(
             base64_secret
         ).unwrap();
-        let key: [u8; AES_BLOCK_SIZE] = rand::thread_rng().gen();
 
-        let oracle: AesOracle = AesOracle::new(&key, &secret);
+        let oracle: AesOracle = AesOracle::new(&secret);
 
         // Detect ECB as instructions asked us
         let ciphertext = oracle.encrypt(&['A' as u8; 64]);
