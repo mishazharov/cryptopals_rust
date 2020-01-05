@@ -1,8 +1,11 @@
-use openssl::symm::{Cipher, decrypt, encrypt};
+extern crate rand;
 
 use crate::consts::AES_BLOCK_SIZE;
-extern crate rand;
+
 use rand::Rng;
+use openssl::symm::{Cipher, decrypt, encrypt};
+
+use super::c9::pad_pkcs7;
 
 struct UserAccount {
     email: String,
@@ -80,21 +83,26 @@ mod tests {
         let key: [u8; AES_BLOCK_SIZE] = rand::thread_rng().gen();
         let mut oracle = EmailOracle::new(&key);
 
+        let admin_block_plaintext = pad_pkcs7(b"admin", AES_BLOCK_SIZE).unwrap();
+        let admin_block_plaintext_str = String::from_utf8(admin_block_plaintext).unwrap();
+
+        let mut attack_string: String = String::from("a23456789@");
+        attack_string.push_str(&admin_block_plaintext_str);
+        attack_string.push_str(".com");
+
         let enc1 = oracle.profile_for(
-            "a23456789@admin\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b\x0b.com"
+            &attack_string
         );
 
         // TODO: Maybe create a method to return a block by index
-        let admin_block = &enc1[AES_BLOCK_SIZE..2 * AES_BLOCK_SIZE];
+        let admin_block_ciphertext = &enc1[AES_BLOCK_SIZE..2 * AES_BLOCK_SIZE];
 
         let hacker_email = "aesecb@lwn.net";
         let mut enc2 = oracle.profile_for(hacker_email);
 
         let enc2_len = enc2.len();
 
-        for i in 0..16 {
-            enc2[i + enc2_len - AES_BLOCK_SIZE] = admin_block[i];
-        }
+        enc2[enc2_len - AES_BLOCK_SIZE..].copy_from_slice(&admin_block_ciphertext);
 
         let res = oracle.cookie_to_object(&enc2);
         assert_eq!(hacker_email, res.email);

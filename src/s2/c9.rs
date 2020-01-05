@@ -1,6 +1,6 @@
 use std::error::Error;
 
-fn pad_pkcs7(bytes: &[u8], block_size: usize) -> Result<Vec<u8>, Box<dyn Error>> {
+pub fn pad_pkcs7(bytes: &[u8], block_size: usize) -> Result<Vec<u8>, Box<dyn Error>> {
     let mut res = bytes.to_vec();
 
     // No padding required
