@@ -76,27 +76,44 @@ mod attacker {
         0
     }
 
-    // (num_bytes_secret, target_block_ind)
-    fn get_target_size_and_block(oracle: &AesOracle, block_size: usize) -> (usize, usize) {
-        let num_bytes_secret = oracle.encrypt(&[]).len();
-        let target_block_ind = num_bytes_secret / block_size - 1;
-        (num_bytes_secret, target_block_ind)
+    // Vec<(length, index)>
+    pub fn get_consecutive_equal_ecb_blocks(ciphertext: &[u8], block_size: usize) -> Vec<(usize, usize)> {
+        let mut res: Vec<(usize, usize)> = Vec::new();
+
+        // Start at 2 because we won't report memory regions made of 1 consecutive equal block (this describes all
+        // blocks)
+        let mut curr_count = 1;
+        for block_start_index in (block_size..ciphertext.len()).step_by(block_size) {
+            // Check if the previous block is equal to the current block
+            if ciphertext[block_start_index..block_start_index + block_size] == 
+               ciphertext[block_start_index - block_size..block_start_index] {
+                curr_count += 1;
+            } else if curr_count != 1 {
+                res.push((curr_count, block_start_index - curr_count * block_size));
+                curr_count = 1;
+            }
+        }
+        // Make sure we get the last block
+        if curr_count != 1 {
+            res.push((curr_count, ciphertext.len() - ciphertext.len() % block_size - curr_count * block_size));
+        }
+        res
     }
 
     pub fn attack_aes_oracle(oracle: &AesOracle) -> Vec<u8> {
         let block_size = get_oracle_block_size(oracle);
-        let (num_bytes_secret, target_block_ind) = get_target_size_and_block(oracle, block_size);
-        let mut test_vec = vec![0u8; num_bytes_secret * 2];
+        let num_bytes = oracle.encrypt(&[]).len();
+        let mut test_vec = vec![0u8; num_bytes * 2];
 
-        let target_block_end_byte_ind = (target_block_ind + 1) * block_size;
+        let target_block_ind = num_bytes / block_size - 1;
+        let target_block_end = (target_block_ind + 1) * block_size;
 
-        'outer: for i in 0..num_bytes_secret {
-            let target = oracle.encrypt(&test_vec[0..num_bytes_secret - (i + 1)]);
+        'outer: for i in 0..num_bytes {
+            let target = oracle.encrypt(&test_vec[0..num_bytes - (i + 1)]);
 
             // Finds one byte in a block
             loop {
-                // Need to update indices here
-                let result = oracle.encrypt(&test_vec[i..num_bytes_secret + i]);
+                let result = oracle.encrypt(&test_vec[i..num_bytes + i]);
 
                 if are_blocks_equal(block_size, target_block_ind, &target, &result)
                 {
@@ -104,16 +121,16 @@ mod attacker {
                 }
 
                 // Padding has started here
-                if test_vec[target_block_end_byte_ind - 1 + i] == 255 {
+                if test_vec[target_block_end - 1 + i] == 255 {
                     // We need to subtract two because one of the padding bytes gets through
                     // and we also have the byte which is 255
-                    test_vec.truncate(num_bytes_secret + i - 2);
+                    test_vec.truncate(num_bytes + i - 2);
                     break 'outer;
                 }
-                test_vec[target_block_end_byte_ind - 1 + i] += 1;
+                test_vec[target_block_end - 1 + i] += 1;
             }
         }
-        let res = test_vec.drain(num_bytes_secret - 1..).collect();
+        let res = test_vec.drain(num_bytes - 1..).collect();
         res
     }
 }
@@ -166,5 +183,25 @@ mod tests {
     fn aes_byte_at_a_time_decryption_3() {
         let base64_secret = "QQ==";
         run_base64_test(&base64_secret);
+    }
+
+    #[test]
+    fn test_get_consecutive_equal_ecb_blocks() {
+        let data: Vec<u8> = vec![0, 0, 1, 1, 3, 3, 8, 9, 6, 5, 2, 2];
+        let result: Vec<(usize, usize)> = vec![(2, 0), (2, 2), (2, 4), (2, 10)];
+        assert_eq!(
+            &attacker::get_consecutive_equal_ecb_blocks(&data, 1),
+            &result
+        );
+    }
+
+    #[test]
+    fn test_get_consecutive_equal_ecb_blocks_0() {
+        let data: Vec<u8> = vec![32; 32];
+        let result: Vec<(usize, usize)> = vec![(2, 0)];
+        assert_eq!(
+            &attacker::get_consecutive_equal_ecb_blocks(&data, 16),
+            &result
+        );
     }
 }
