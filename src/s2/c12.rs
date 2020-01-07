@@ -76,20 +76,27 @@ mod attacker {
         0
     }
 
+    // (num_bytes_secret, target_block_ind)
+    fn get_target_size_and_block(oracle: &AesOracle, block_size: usize) -> (usize, usize) {
+        let num_bytes_secret = oracle.encrypt(&[]).len();
+        let target_block_ind = num_bytes_secret / block_size - 1;
+        (num_bytes_secret, target_block_ind)
+    }
+
     pub fn attack_aes_oracle(oracle: &AesOracle) -> Vec<u8> {
         let block_size = get_oracle_block_size(oracle);
-        let num_bytes = oracle.encrypt(&[]).len();
-        let mut test_vec = vec![0u8; num_bytes * 2];
+        let (num_bytes_secret, target_block_ind) = get_target_size_and_block(oracle, block_size);
+        let mut test_vec = vec![0u8; num_bytes_secret * 2];
 
-        let target_block_ind = num_bytes / block_size - 1;
-        let target_block_end = (target_block_ind + 1) * block_size;
+        let target_block_end_byte_ind = (target_block_ind + 1) * block_size;
 
-        'outer: for i in 0..num_bytes {
-            let target = oracle.encrypt(&test_vec[0..num_bytes - (i + 1)]);
+        'outer: for i in 0..num_bytes_secret {
+            let target = oracle.encrypt(&test_vec[0..num_bytes_secret - (i + 1)]);
 
             // Finds one byte in a block
             loop {
-                let result = oracle.encrypt(&test_vec[i..num_bytes + i]);
+                // Need to update indices here
+                let result = oracle.encrypt(&test_vec[i..num_bytes_secret + i]);
 
                 if are_blocks_equal(block_size, target_block_ind, &target, &result)
                 {
@@ -97,16 +104,16 @@ mod attacker {
                 }
 
                 // Padding has started here
-                if test_vec[target_block_end - 1 + i] == 255 {
+                if test_vec[target_block_end_byte_ind - 1 + i] == 255 {
                     // We need to subtract two because one of the padding bytes gets through
                     // and we also have the byte which is 255
-                    test_vec.truncate(num_bytes + i - 2);
+                    test_vec.truncate(num_bytes_secret + i - 2);
                     break 'outer;
                 }
-                test_vec[target_block_end - 1 + i] += 1;
+                test_vec[target_block_end_byte_ind - 1 + i] += 1;
             }
         }
-        let res = test_vec.drain(num_bytes - 1..).collect();
+        let res = test_vec.drain(num_bytes_secret - 1..).collect();
         res
     }
 }

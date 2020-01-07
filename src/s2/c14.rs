@@ -2,6 +2,10 @@ extern crate base64;
 
 use super::c12::oracle::AesOracle;
 
+fn attack_prefix_oracle(oracle: AesOracle) {
+    let plaintext: Vec<u8> = Vec::new();
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
