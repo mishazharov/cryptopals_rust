@@ -7,7 +7,7 @@ use super::c12::oracle::*;
 use super::c12::attacker;
 
 use rand::Rng;
-use rand::distributions::Standard;
+use rand::distributions::Alphanumeric;
 
 #[cfg(test)]
 mod tests {
@@ -45,9 +45,9 @@ mod tests {
         for _ in 0..100 {
             let mut rng = rand::thread_rng();
             let secret_len: usize = rng.gen_range(100, 250);
-            let secret: Vec<u8> = rng.sample_iter(Standard).take(secret_len).collect();
+            let secret: String = rng.sample_iter(Alphanumeric).take(secret_len).collect();
 
-            let oracle_core: AesOracleCore = AesOracleCore::new(&secret);
+            let oracle_core: AesOracleCore = AesOracleCore::new(secret.as_bytes());
             let oracle: AesPrefixOracle = AesPrefixOracle::new(&oracle_core);
 
             // Detect ECB as instructions asked us
@@ -57,7 +57,7 @@ mod tests {
             assert_eq!(attacker::get_oracle_block_size(&oracle), AES_BLOCK_SIZE);
 
             let res = attacker::attack_aes_oracle(&oracle);
-            assert_eq!(&secret, &res);
+            assert_eq!(secret.as_bytes(), &res[..]);
         }
     }
 }

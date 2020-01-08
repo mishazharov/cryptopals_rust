@@ -148,6 +148,7 @@ pub mod attacker {
     }
 
     // Returns (blocks_length, start_index, user_length)
+    // Only works on alphanumeric input currently
     pub fn get_user_data_start_block<T: IsOracle>(oracle: &T, block_size: usize) -> (usize, usize, usize, usize) {
         let mut test_vec = vec![0u8; block_size];
 
