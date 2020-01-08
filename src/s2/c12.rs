@@ -3,7 +3,7 @@ extern crate rand;
 extern crate hex;
 
 use rand::Rng;
-use rand::distributions::Standard;
+use rand::distributions::{Standard, Alphanumeric};
 
 use crate::aes_utils::*;
 
@@ -147,8 +147,8 @@ pub mod attacker {
         res
     }
 
+    // TODO: Only works on alphanumeric input currently (should fix this)
     // Returns (blocks_length, start_index, user_length)
-    // Only works on alphanumeric input currently
     pub fn get_user_data_start_block<T: IsOracle>(oracle: &T, block_size: usize) -> (usize, usize, usize, usize) {
         let mut test_vec = vec![0u8; block_size];
 
@@ -329,9 +329,9 @@ mod tests {
         for _ in 0..100 {
             let mut rng = rand::thread_rng();
             let secret_len: usize = rng.gen_range(100, 250);
-            let secret: Vec<u8> = rng.sample_iter(Standard).take(secret_len).collect();
+            let secret: String = rng.sample_iter(Alphanumeric).take(secret_len).collect();
 
-            let oracle_core: AesOracleCore = AesOracleCore::new(&secret);
+            let oracle_core: AesOracleCore = AesOracleCore::new(secret.as_bytes());
             let oracle: AesOracle = AesOracle::new(&oracle_core);
 
             // Detect ECB as instructions asked us
@@ -341,7 +341,7 @@ mod tests {
             assert_eq!(attacker::get_oracle_block_size(&oracle), AES_BLOCK_SIZE);
 
             let res = attacker::attack_aes_oracle(&oracle);
-            assert_eq!(&secret, &res);
+            assert_eq!(secret.as_bytes(), &res[..]);
         }
     }
 }
