@@ -12,13 +12,18 @@ use super::c11::detect_ecb_from_stream;
 pub mod oracle {
     use super::*;
 
-    pub struct AesOracle<'a> {
-        secret: &'a [u8],
-        key: Vec<u8>,
-        prefix: Vec<u8>
+    pub trait IsOracle {
+        fn encrypt(&self, plaintext: &[u8]) -> Vec<u8>;
     }
-    impl<'a> AesOracle<'a> {
-        pub fn new(secret: &'a [u8]) -> AesOracle<'a> {
+
+    pub struct AesOracleCore<'a> {
+        pub secret: &'a [u8],
+        pub key: Vec<u8>,
+        pub prefix: Vec<u8>
+    }
+
+    impl<'a> AesOracleCore<'a> {
+        pub fn new(secret: &'a [u8]) -> AesOracleCore<'a> {
             let mut rng = rand::thread_rng();
 
             let key: [u8; AES_BLOCK_SIZE] = rng.gen();
@@ -26,37 +31,74 @@ pub mod oracle {
             let prefix_len: usize = rng.gen_range(100, 250);
             let prefix: Vec<u8> = rng.sample_iter(Standard).take(prefix_len).collect();
 
-            AesOracle {
+            AesOracleCore {
                 secret: secret,
                 key: key.to_vec(),
                 prefix: prefix
             }
         }
-        pub fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
-            let mut plaintext_with_secret: Vec<u8> = plaintext.to_vec();
-            plaintext_with_secret.extend_from_slice(self.secret);
-            aes_ecb_encrypt(&self.key, &plaintext_with_secret)
-        }
+    }
 
-        pub fn encrypt_with_prefix(&self, plaintext: &[u8]) -> Vec<u8> {
-            let mut plaintext_with_secret: Vec<u8> = self.prefix.clone();
-            plaintext_with_secret.append(&mut plaintext.to_vec());
-            plaintext_with_secret.extend_from_slice(self.secret);
-            aes_ecb_encrypt(&self.key, &plaintext_with_secret)
+    // This struct allows us to pass an AesOracleCore to an attacker without exposing
+    // the secret, keys, and padding. However, it allows the test infrastructure to
+    // access these variables. Normally the tests cannot access these because they
+    // are in c12::tests and the oracle is in c12::oracle. Therefore private variables
+    // remain private.
+    //
+    // It would have also been possible to write some tests in a submodule of oracle,
+    // but then we're testing the attackers code in the oracle module, which feels
+    // even dirtier.
+    pub struct AesOracle<'a> {
+        oracle_core: &'a AesOracleCore<'a>
+    }
+    impl<'a> IsOracle for AesOracle<'a> {
+        fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
+            let mut plaintext_with_secret: Vec<u8> = plaintext.to_vec();
+            plaintext_with_secret.extend_from_slice(self.oracle_core.secret);
+            aes_ecb_encrypt(&self.oracle_core.key, &plaintext_with_secret)
+        }
+    }
+    impl<'a> AesOracle<'a> {
+        pub fn new(oracle_core: &'a AesOracleCore) -> AesOracle<'a>{
+            AesOracle {
+                oracle_core: oracle_core
+            }
+        }
+    }
+
+    pub struct AesPrefixOracle<'a> {
+        oracle_core: &'a AesOracleCore<'a>
+    }
+    impl<'a> IsOracle for AesPrefixOracle<'a> {
+        fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
+            let mut plaintext_with_secret: Vec<u8> = self.oracle_core.prefix.clone();
+            plaintext_with_secret.extend_from_slice(plaintext);
+            plaintext_with_secret.extend_from_slice(self.oracle_core.secret);
+            aes_ecb_encrypt(&self.oracle_core.key, &plaintext_with_secret)
+        }
+    }
+    impl<'a> AesPrefixOracle<'a> {
+        pub fn new(oracle_core: &'a AesOracleCore) -> AesPrefixOracle<'a>{
+            AesPrefixOracle {
+                oracle_core: oracle_core
+            }
         }
     }
 }
 
-mod attacker {
-    use super::oracle::AesOracle;
+pub mod attacker {
+    use super::oracle::*;
 
     fn are_blocks_equal(block_size: usize, block_num: usize, b1: &[u8], b2: &[u8]) -> bool {
         let target_block_start = block_num * block_size;
         let target_block_end = (block_num + 1) * block_size;
-        b1[target_block_start..target_block_end] == b2[target_block_start..target_block_end]
+
+        let s1 = &b1[target_block_start..target_block_end];
+        let s2 = &b2[target_block_start..target_block_end];
+        s1 == s2
     }
 
-    pub fn get_oracle_block_size(oracle: &AesOracle) -> usize {
+    pub fn get_oracle_block_size<T: IsOracle>(oracle: &T) -> usize {
 
         let mut size_last = oracle.encrypt(&['A' as u8]).len();
         let mut size_changed: bool = false;
@@ -76,7 +118,8 @@ mod attacker {
         0
     }
 
-    // Vec<(length, index)>
+    // This method finds blocks that are equal and consecutive in a byte slice
+    // Returns Vec<(length, index)>
     pub fn get_consecutive_equal_ecb_blocks(ciphertext: &[u8], block_size: usize) -> Vec<(usize, usize)> {
         let mut res: Vec<(usize, usize)> = Vec::new();
 
@@ -89,64 +132,97 @@ mod attacker {
                ciphertext[block_start_index - block_size..block_start_index] {
                 curr_count += 1;
             } else if curr_count != 1 {
-                res.push((curr_count, block_start_index - curr_count * block_size));
+                let index = block_start_index - curr_count * block_size;
+                assert_eq!(index % block_size, 0);
+                res.push((curr_count, index));
                 curr_count = 1;
             }
         }
         // Make sure we get the last block
         if curr_count != 1 {
-            res.push((curr_count, ciphertext.len() - ciphertext.len() % block_size - curr_count * block_size));
+            let index = ciphertext.len() - curr_count * block_size;
+            assert_eq!(index % block_size, 0);
+            res.push((curr_count, index));
         }
         res
     }
 
-    pub fn attack_aes_oracle(oracle: &AesOracle) -> Vec<u8> {
+    // Returns (blocks_length, start_index, user_length)
+    pub fn get_user_data_start_block<T: IsOracle>(oracle: &T, block_size: usize) -> (usize, usize, usize, usize) {
+        let mut test_vec = vec![0u8; block_size];
+
+        let initial: Vec<(usize, usize)> = get_consecutive_equal_ecb_blocks(&oracle.encrypt(&test_vec), block_size);
+
+        loop {
+            let ciphertext = oracle.encrypt(&test_vec);
+            let current: Vec<(usize, usize)> = get_consecutive_equal_ecb_blocks(&ciphertext, block_size);
+
+            for i in 0..current.len() {
+                if initial.len() <= i || initial[i] != current[i] {
+                    assert_eq!(current[i].1 % block_size, 0);
+                    return (current[i].0, current[i].1, test_vec.len(), ciphertext.len());
+                }
+            }
+
+            test_vec.push(0);
+        }
+    }
+
+    pub fn attack_aes_oracle<T: IsOracle>(oracle: &T) -> Vec<u8> {
         let block_size = get_oracle_block_size(oracle);
-        let num_bytes = oracle.encrypt(&[]).len();
-        let mut test_vec = vec![0u8; num_bytes * 2];
 
-        let target_block_ind = num_bytes / block_size - 1;
-        let target_block_end = (target_block_ind + 1) * block_size;
+        let (blocks_length, start_index, user_length, total_len) = get_user_data_start_block(oracle, block_size);
+        
+        let bytes_to_extract = total_len - start_index - blocks_length * block_size;
 
-        'outer: for i in 0..num_bytes {
-            let target = oracle.encrypt(&test_vec[0..num_bytes - (i + 1)]);
+        let bytes_to_complete_prefix_block = user_length % block_size;
+        let vecs_length = bytes_to_extract + bytes_to_complete_prefix_block;
+        let vec_empty = vec![0u8; vecs_length];
+        let mut vec_test = vec![0u8; vecs_length];
 
-            // Finds one byte in a block
+        'outer: for current_byte in 0..bytes_to_extract {
+            let target = oracle.encrypt(&vec_empty[current_byte + 1..]);
+
             loop {
-                let result = oracle.encrypt(&test_vec[i..num_bytes + i]);
+                let result = oracle.encrypt(&vec_test);
 
-                if are_blocks_equal(block_size, target_block_ind, &target, &result)
-                {
+                if are_blocks_equal(block_size, (vecs_length + start_index) / block_size - 1, &target, &result) {
                     break;
                 }
 
-                // Padding has started here
-                if test_vec[target_block_end - 1 + i] == 255 {
+                if vec_test[vecs_length - 1] == 255 {
                     // We need to subtract two because one of the padding bytes gets through
                     // and we also have the byte which is 255
-                    test_vec.truncate(num_bytes + i - 2);
+                    vec_test.truncate(vecs_length - 2);
+                    vec_test.drain(0..bytes_to_extract - current_byte - 1);
                     break 'outer;
                 }
-                test_vec[target_block_end - 1 + i] += 1;
+                vec_test[vecs_length - 1] += 1;
             }
+            if current_byte + 1 == bytes_to_extract {
+                vec_test.pop();
+                break;
+            }
+            vec_test.push(0);
+            vec_test.drain(0..1);
         }
-        let res = test_vec.drain(num_bytes - 1..).collect();
-        res
+        vec_test.drain(0..bytes_to_complete_prefix_block);
+        vec_test
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::oracle::AesOracle;
-    use super::attacker;
+    use super::oracle::*;
 
     fn run_base64_test(base64_secret: &str) {
         let secret = base64::decode(
             base64_secret
         ).unwrap();
 
-        let oracle: AesOracle = AesOracle::new(&secret);
+        let oracle_core: AesOracleCore = AesOracleCore::new(&secret);
+        let oracle: AesOracle = AesOracle::new(&oracle_core);
 
         // Detect ECB as instructions asked us
         let ciphertext = oracle.encrypt(&['A' as u8; 64]);
@@ -203,5 +279,68 @@ mod tests {
             &attacker::get_consecutive_equal_ecb_blocks(&data, 16),
             &result
         );
+    }
+
+    #[test]
+    fn test_get_user_data_start_block() {
+        let secret = b"Hello World";
+
+        let oracle_core: AesOracleCore = AesOracleCore::new(secret);
+        let oracle: AesPrefixOracle = AesPrefixOracle::new(&oracle_core);
+
+        let block_size = attacker::get_oracle_block_size(&oracle);
+        let (blocks_length, start_index, user_length, total_len) = attacker::get_user_data_start_block(&oracle, block_size);
+
+        let prefix_len = oracle_core.prefix.len();
+
+        // Weak sanity checks. Can add more thorough testing if it is necessary
+        assert!(start_index >= prefix_len);
+        assert!(start_index < prefix_len + block_size);
+
+        assert!((user_length +  prefix_len) % block_size == 0);
+
+        assert!(blocks_length * block_size <= user_length);
+        assert!((blocks_length + 1) * block_size > user_length);
+
+        assert!(total_len >= start_index + blocks_length * block_size);
+    }
+
+    #[test]
+    fn test_get_user_data_start_block_reg_oracle() {
+        let secret = b"Hello World";
+
+        let oracle_core: AesOracleCore = AesOracleCore::new(secret);
+        let oracle: AesOracle = AesOracle::new(&oracle_core);
+
+        let block_size = attacker::get_oracle_block_size(&oracle);
+        let (blocks_length, start_index, user_length, total_len) = attacker::get_user_data_start_block(&oracle, block_size);
+
+        // Weak sanity checks. Can add more thorough testing if it is necessary
+        assert_eq!(start_index, 0);
+        assert_eq!(user_length, block_size * 2);
+        assert_eq!(blocks_length, 2);
+
+        assert!(total_len >= start_index + blocks_length * block_size);
+    }
+
+    #[test]
+    fn aes_byte_at_a_time_decryption_random(){
+        for _ in 0..100 {
+            let mut rng = rand::thread_rng();
+            let secret_len: usize = rng.gen_range(100, 250);
+            let secret: Vec<u8> = rng.sample_iter(Standard).take(secret_len).collect();
+
+            let oracle_core: AesOracleCore = AesOracleCore::new(&secret);
+            let oracle: AesOracle = AesOracle::new(&oracle_core);
+
+            // Detect ECB as instructions asked us
+            let ciphertext = oracle.encrypt(&['A' as u8; 64]);
+            assert!(detect_ecb_from_stream(&ciphertext));
+
+            assert_eq!(attacker::get_oracle_block_size(&oracle), AES_BLOCK_SIZE);
+
+            let res = attacker::attack_aes_oracle(&oracle);
+            assert_eq!(&secret, &res);
+        }
     }
 }
