@@ -189,20 +189,20 @@ pub mod attacker {
 
         let bytes_to_extract = total_len - start_index;
         let vecs_length = bytes_to_extract + bytes_to_complete_prefix_block;
-        let vec_empty = vec![1u8; vecs_length];
-        let mut vec_test = vec![1u8; vecs_length];
+        let vec_empty = vec![0u8; vecs_length];
+        let mut vec_test = vec![0u8; vecs_length];
 
         'outer: for current_byte in 0..bytes_to_extract {
             let target = oracle.encrypt(&vec_empty[current_byte + 1..]);
 
-            vec_test[vecs_length - 1] = 0;
             loop {
                 let result = oracle.encrypt(&vec_test);
 
                 if are_blocks_equal(
                     block_size,
-                    (vecs_length + start_index - bytes_to_complete_prefix_block) / block_size - 1
-                    , &target, &result
+                    (vecs_length + start_index - bytes_to_complete_prefix_block) / block_size - 1,
+                    &target,
+                    &result
                 ) {
                     break;
                 }
@@ -220,7 +220,7 @@ pub mod attacker {
                 vec_test.pop();
                 break;
             }
-            vec_test.push(1);
+            vec_test.push(0);
             vec_test.drain(0..1);
         }
         vec_test.drain(0..bytes_to_complete_prefix_block);
