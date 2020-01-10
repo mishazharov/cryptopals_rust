@@ -3,7 +3,7 @@ extern crate rand;
 extern crate hex;
 
 use rand::Rng;
-use rand::distributions::{Standard, Alphanumeric};
+use rand::distributions::Standard;
 
 use crate::aes_utils::*;
 
@@ -30,6 +30,7 @@ pub mod oracle {
 
             let prefix_len: usize = rng.gen_range(100, 250);
             let prefix: Vec<u8> = rng.sample_iter(Standard).take(prefix_len).collect();
+            // let prefix = hex::decode("52b9c458d884723e23bf99a53cbfde84717c90a086b4a6fea4f9aabf1572107cb821dc4fa9e007e1e39bf021580bd3d47cbfffb8edbbb9a8b60218eaebe0c10c8fd6030bf6c96db74ad4614785a657775b5637741f41fc2280cf5e6b0bd223cb2b1a5580bf05a4f70e1b2355ec298a4b29d671a0740f82928bdf48b6811e199b647d88b1e922ba4a1f7e990d981111aae430784f80ba255cc3d40518a92313dc663577a0960c8b2254a4ed8c1283023fc031d4816f889bbb862da3041ed42401").unwrap();
 
             AesOracleCore {
                 secret: secret,
@@ -91,7 +92,7 @@ pub mod attacker {
 
     fn are_blocks_equal(block_size: usize, block_num: usize, b1: &[u8], b2: &[u8]) -> bool {
         let target_block_start = block_num * block_size;
-        let target_block_end = (block_num + 1) * block_size;
+        let target_block_end = target_block_start + block_size;
 
         let s1 = &b1[target_block_start..target_block_end];
         let s2 = &b2[target_block_start..target_block_end];
@@ -147,10 +148,9 @@ pub mod attacker {
         res
     }
 
-    // TODO: Only works on alphanumeric input currently (should fix this)
-    // Returns (blocks_length, start_index, user_length)
-    pub fn get_user_data_start_block<T: IsOracle>(oracle: &T, block_size: usize) -> (usize, usize, usize, usize) {
-        let mut test_vec = vec![0u8; block_size];
+    // Returns (blocks_length, start_index, user_length, total_len)
+    fn get_user_data_start_block_<T: IsOracle>(oracle: &T, block_size: usize, padding: u8) -> (usize, usize, usize, usize) {
+        let mut test_vec = vec![padding; 0];
 
         let initial: Vec<(usize, usize)> = get_consecutive_equal_ecb_blocks(&oracle.encrypt(&test_vec), block_size);
 
@@ -165,29 +165,45 @@ pub mod attacker {
                 }
             }
 
-            test_vec.push(0);
+            test_vec.push(padding);
         }
+    }
+
+    // Returns (blocks_length, start_index, user_length, total_len)
+    pub fn get_user_data_start_block<T: IsOracle>(oracle: &T, block_size: usize) -> (usize, usize, usize, usize) {
+        let res1 = get_user_data_start_block_(oracle, block_size, 2);
+        let res2 = get_user_data_start_block_(oracle, block_size, 1);
+
+        if res1.2 > res2.2 {
+            return res1;
+        }
+        res2
     }
 
     pub fn attack_aes_oracle<T: IsOracle>(oracle: &T) -> Vec<u8> {
         let block_size = get_oracle_block_size(oracle);
 
-        let (blocks_length, start_index, user_length, total_len) = get_user_data_start_block(oracle, block_size);
-        
-        let bytes_to_extract = total_len - start_index - blocks_length * block_size;
+        let (_blocks_length, start_index, user_length, total_len) = get_user_data_start_block(oracle, block_size);
 
         let bytes_to_complete_prefix_block = user_length % block_size;
+
+        let bytes_to_extract = total_len - start_index;
         let vecs_length = bytes_to_extract + bytes_to_complete_prefix_block;
-        let vec_empty = vec![0u8; vecs_length];
-        let mut vec_test = vec![0u8; vecs_length];
+        let vec_empty = vec![1u8; vecs_length];
+        let mut vec_test = vec![1u8; vecs_length];
 
         'outer: for current_byte in 0..bytes_to_extract {
             let target = oracle.encrypt(&vec_empty[current_byte + 1..]);
 
+            vec_test[vecs_length - 1] = 0;
             loop {
                 let result = oracle.encrypt(&vec_test);
 
-                if are_blocks_equal(block_size, (vecs_length + start_index) / block_size - 1, &target, &result) {
+                if are_blocks_equal(
+                    block_size,
+                    (vecs_length + start_index - bytes_to_complete_prefix_block) / block_size - 1
+                    , &target, &result
+                ) {
                     break;
                 }
 
@@ -204,7 +220,7 @@ pub mod attacker {
                 vec_test.pop();
                 break;
             }
-            vec_test.push(0);
+            vec_test.push(1);
             vec_test.drain(0..1);
         }
         vec_test.drain(0..bytes_to_complete_prefix_block);
@@ -325,13 +341,13 @@ mod tests {
     }
 
     #[test]
-    fn aes_byte_at_a_time_decryption_random(){
-        for _ in 0..100 {
+    fn aes_byte_at_a_time_decryption_no_prefix_random(){
+        for _ in 0..500 {
             let mut rng = rand::thread_rng();
             let secret_len: usize = rng.gen_range(100, 250);
-            let secret: String = rng.sample_iter(Alphanumeric).take(secret_len).collect();
+            let secret: Vec<u8> = rng.sample_iter(Standard).take(secret_len).collect();
 
-            let oracle_core: AesOracleCore = AesOracleCore::new(secret.as_bytes());
+            let oracle_core: AesOracleCore = AesOracleCore::new(&secret);
             let oracle: AesOracle = AesOracle::new(&oracle_core);
 
             // Detect ECB as instructions asked us
@@ -341,7 +357,7 @@ mod tests {
             assert_eq!(attacker::get_oracle_block_size(&oracle), AES_BLOCK_SIZE);
 
             let res = attacker::attack_aes_oracle(&oracle);
-            assert_eq!(secret.as_bytes(), &res[..]);
+            assert_eq!(&secret, &res);
         }
     }
 }
