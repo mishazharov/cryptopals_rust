@@ -42,7 +42,7 @@ mod tests {
 
     #[test]
     fn aes_byte_at_a_time_decryption_prefix_random() {
-        for _ in 0..500 {
+        for _ in 0..50 {
             let mut rng = rand::thread_rng();
             let secret_len: usize = rng.gen_range(100, 250);
             let secret: Vec<u8> = rng.sample_iter(Standard).take(secret_len).collect();
