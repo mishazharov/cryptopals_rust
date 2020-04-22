@@ -30,7 +30,6 @@ pub mod oracle {
 
             let prefix_len: usize = rng.gen_range(100, 250);
             let prefix: Vec<u8> = rng.sample_iter(Standard).take(prefix_len).collect();
-            // let prefix = hex::decode("52b9c458d884723e23bf99a53cbfde84717c90a086b4a6fea4f9aabf1572107cb821dc4fa9e007e1e39bf021580bd3d47cbfffb8edbbb9a8b60218eaebe0c10c8fd6030bf6c96db74ad4614785a657775b5637741f41fc2280cf5e6b0bd223cb2b1a5580bf05a4f70e1b2355ec298a4b29d671a0740f82928bdf48b6811e199b647d88b1e922ba4a1f7e990d981111aae430784f80ba255cc3d40518a92313dc663577a0960c8b2254a4ed8c1283023fc031d4816f889bbb862da3041ed42401").unwrap();
 
             AesOracleCore {
                 secret: secret,
@@ -342,7 +341,7 @@ mod tests {
 
     #[test]
     fn aes_byte_at_a_time_decryption_no_prefix_random(){
-        for _ in 0..500 {
+        for _ in 0..25 {
             let mut rng = rand::thread_rng();
             let secret_len: usize = rng.gen_range(100, 250);
             let secret: Vec<u8> = rng.sample_iter(Standard).take(secret_len).collect();
