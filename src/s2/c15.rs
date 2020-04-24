@@ -1,4 +1,4 @@
-fn padding_validation(to_validate: &[u8]) -> Result<&[u8], &'static str> {
+pub fn padding_validation(to_validate: &[u8]) -> Result<&[u8], &'static str> {
     let len_slice = to_validate.len();
     let len_padding: u8 = match len_slice {
         0 => return Err("Empty string does not have a well defined padding"),

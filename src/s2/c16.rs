@@ -56,7 +56,7 @@ mod tests {
     #[test]
     fn test_server_oracle() {
         let so = ServerOracle {
-            key: &gen_random_aes_key()
+            key: &gen_random_16_bytes()
         };
         assert_eq!(so.is_client_admin(so.encrypt(b";admin=true;")), false);
     }
@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn test_attack_server_oracle() {
         let so = ServerOracle {
-            key: &gen_random_aes_key()
+            key: &gen_random_16_bytes()
         };
         assert_eq!(so.is_client_admin(attack_server(&so)), true);
     }

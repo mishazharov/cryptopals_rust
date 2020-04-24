@@ -1,4 +1,4 @@
-use openssl::symm::{Cipher, encrypt, decrypt};
+use openssl::symm::{Cipher, encrypt, decrypt, Mode, Crypter};
 use rand::Rng;
 
 pub const AES_BLOCK_SIZE: usize = 16;
@@ -49,7 +49,29 @@ pub fn aes_cbc_decrypt(key: &[u8], ciphertext: &[u8]) -> Vec<u8> {
     plaintext
 }
 
-pub fn gen_random_aes_key() -> [u8; AES_BLOCK_SIZE] {
+pub fn aes_cbc_decrypt_nopad(key: &[u8], ciphertext: &[u8], iv: &[u8]) -> Vec<u8> {
+    let mut decrypter = Crypter::new(
+        Cipher::aes_128_ecb(),
+        Mode::Decrypt,
+        key,
+        Some(&iv)
+    ).unwrap();
+
+    // Padding will cause OpenSSL to throw a bad decrypt error
+    // https://github.com/wahern/luaossl/issues/30
+    // Similar to https://crypto.stackexchange.com/a/12623/29392
+    // Because when using ECB, the padding in the plaintext
+    // will be invalid (until we XOR it with the ciphertext)
+    decrypter.pad(false);
+    let mut plaintext = vec![0; ciphertext.len() + 16];
+
+    let mut count = decrypter.update(&ciphertext, &mut plaintext).unwrap();
+    count += decrypter.finalize(&mut plaintext[count..]).unwrap();
+    plaintext.truncate(count);
+    plaintext
+}
+
+pub fn gen_random_16_bytes() -> [u8; AES_BLOCK_SIZE] {
     let mut rng = rand::thread_rng();
 
     let key: [u8; AES_BLOCK_SIZE] = rng.gen();
