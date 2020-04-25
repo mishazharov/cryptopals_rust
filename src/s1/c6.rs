@@ -16,9 +16,9 @@ struct XorRepeatingResult {
     key: Vec<u8>
 }
 
-fn xor_vecs(str_1: &[u8], str_2: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
+pub fn xor_vecs(str_1: &[u8], str_2: &[u8]) -> Result<Vec<u8>, &'static str> {
     if str_1.len() != str_2.len() {
-        return Err(From::from("bytes are not of equal length"))
+        return Err("Bytes are not of equal length")
     }
     // https://users.rust-lang.org/t/how-to-xor-two-vec-u8/31071/2
     let res: Vec<u8> = str_1.iter().zip(str_2.iter()).map(|(&x,&y)| x ^ y).collect();

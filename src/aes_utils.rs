@@ -1,6 +1,8 @@
 use openssl::symm::{Cipher, encrypt, decrypt, Mode, Crypter};
 use rand::Rng;
 
+use crate::s1::c6::xor_vecs;
+
 pub const AES_BLOCK_SIZE: usize = 16;
 
 pub fn aes_ecb_encrypt(key: &[u8], plaintext: &[u8]) -> Vec<u8> {
@@ -90,4 +92,30 @@ pub fn strip_pkcs7(inp: &mut Vec<u8>) {
     let padding_length = inp.last().unwrap();
     let final_length = inp.len().saturating_sub(*padding_length as usize);
     inp.truncate(final_length);
+}
+
+pub fn aes_ctr_crypt(key: &[u8], text: &[u8], nonce: u64) -> Vec<u8> {
+    assert_eq!(key.len(), AES_BLOCK_SIZE);
+
+    let mut blocks_needed = text.len() / 16;
+
+    if text.len() % 16 != 0 {
+        blocks_needed += 1;
+    }
+
+    let mut keystream_pt: Vec<u8> = vec![0u8; blocks_needed * AES_BLOCK_SIZE];
+
+    for i in 0..blocks_needed {
+        let bytes_nonce = nonce.to_le_bytes();
+        let bytes_ctr = (i as i64).to_le_bytes();
+        
+        for j in 0..8 {
+            keystream_pt[i * AES_BLOCK_SIZE + j] = bytes_nonce[j];
+            keystream_pt[i * AES_BLOCK_SIZE + j + 8] = bytes_ctr[j];
+        }
+    }
+
+    let mut keystream_ct = aes_ecb_encrypt(key, &keystream_pt);
+    keystream_ct.truncate(text.len());
+    xor_vecs(text, &keystream_ct).unwrap()
 }

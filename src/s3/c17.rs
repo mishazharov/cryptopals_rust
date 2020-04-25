@@ -154,6 +154,8 @@ mod tests {
 
     #[test]
     fn test_cbc_padding_oracle() {
+        // TODO: This test hangs sometimes (unlucky random numbers seem to cause
+        // issues somewhere)
         for i in 0..11{
             run_oracle_test(i);
             println!("Test # {}", i);
