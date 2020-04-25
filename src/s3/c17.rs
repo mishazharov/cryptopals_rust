@@ -60,6 +60,9 @@ fn attacker_decrypt_block<T: IsServerOracle>(oracle: &T, ct: &[u8]) -> Vec<u8> {
     assert_eq!(ct.len(), 32);
     let mut new_ciphertext = gen_random_16_bytes().to_vec();
     new_ciphertext.extend_from_slice(&ct[AES_BLOCK_SIZE..2 * AES_BLOCK_SIZE]);
+
+    let mut original_ct = new_ciphertext.to_vec();
+
     let mut result = vec![0u8; AES_BLOCK_SIZE];
     let mut intermediate = vec![0u8; AES_BLOCK_SIZE];
 
@@ -68,6 +71,18 @@ fn attacker_decrypt_block<T: IsServerOracle>(oracle: &T, ct: &[u8]) -> Vec<u8> {
 
     let mut i = AES_BLOCK_SIZE - 1;
     loop {
+
+        if i >= AES_BLOCK_SIZE {
+            // We got some bad random numbers which require too much backtracking
+            // Just restart
+            new_ciphertext = gen_random_16_bytes().to_vec();
+            new_ciphertext.extend_from_slice(&ct[AES_BLOCK_SIZE..2 * AES_BLOCK_SIZE]);
+            original_ct = new_ciphertext.to_vec();
+            i = AES_BLOCK_SIZE - 1;
+            ambiguity = 0;
+            backtracking = false;
+        }
+
         let padding_val = AES_BLOCK_SIZE - i;
 
         // We are setting the new ciphertext values in order
@@ -82,20 +97,22 @@ fn attacker_decrypt_block<T: IsServerOracle>(oracle: &T, ct: &[u8]) -> Vec<u8> {
         // we get the smallest `v` candidate
         let mut valid = false;
 
-        if !backtracking{
-            ambiguity = 0;
-        }
         let mut new_ambiguity = ambiguity;
         for v in 0..=255 {
             new_ciphertext[i] = v;
             if oracle.check_padding(&new_ciphertext) {
-                if new_ambiguity == 0 {
+                if new_ambiguity == 0 || !backtracking {
+                    if !backtracking {
+                        ambiguity = 0;
+                    }
                     backtracking = false;
                     intermediate[i] = padding_val as u8 ^ new_ciphertext[i];
                     result[i] = ct[i] ^ intermediate[i];
                     valid = true;
+                    println!("Found byte {} {}, A: {}", i, v, ambiguity);
                     break;
                 } else {
+                    println!("Skipping byte {} {}, A: {}", i, v, ambiguity);
                     new_ambiguity -= 1;
                 }
             }
@@ -103,6 +120,9 @@ fn attacker_decrypt_block<T: IsServerOracle>(oracle: &T, ct: &[u8]) -> Vec<u8> {
 
         if !valid {
             ambiguity += 1;
+            println!("Failed to find byte at {}, A: {}", i, ambiguity);
+            new_ciphertext.truncate(0);
+            new_ciphertext.extend_from_slice(&original_ct);
             i += 2;
             backtracking = true;
         }
@@ -124,6 +144,7 @@ fn attacker<T: IsServerOracle>(oracle: &T) -> Vec<u8> {
     let mut res: Vec<u8> = Vec::new();
 
     for i in 0..ct.len() / 16 {
+        println!("Block # {}", i);
         if i == 0 {
             let mut input = vec![0u8; AES_BLOCK_SIZE];
             input.extend_from_slice(&ct[0..AES_BLOCK_SIZE]);

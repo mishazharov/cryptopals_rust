@@ -1,28 +1,21 @@
 pub fn padding_validation(to_validate: &[u8]) -> Result<&[u8], &'static str> {
     let len_slice = to_validate.len();
-    let len_padding: u8 = match len_slice {
+    let len_padding: usize = match len_slice {
         0 => return Err("Empty string does not have a well defined padding"),
-        n => to_validate[n - 1]
+        n => to_validate[n - 1] as usize
     };
 
-    let mut count: usize = 0;
-    loop {
-        if len_slice - 1 < count {
-            return Err("No content found")
-        }
+    if len_padding > len_slice {
+        return Err("No content found");
+    }
 
-        let curr_ind: usize = len_slice - count - 1;
-
-        if to_validate[curr_ind] != len_padding {
-            return Err("Invalid padding")
-        }
-
-        count += 1;
-
-        if count >= len_padding as usize {
-            return Ok(&to_validate[0..len_slice - len_padding as usize])
+    for i in len_slice - len_padding..len_slice {
+        if to_validate[i] != len_padding as u8 {
+            return Err("Invalid padding");
         }
     }
+
+    return Ok(&to_validate[0..len_slice - len_padding])
 }
 
 #[cfg(test)]
