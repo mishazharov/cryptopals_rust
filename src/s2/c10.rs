@@ -10,15 +10,13 @@ use crate::aes_utils::AES_BLOCK_SIZE;
 
 // Decrypts AES CBC data assuming that it is using PKCS #7 padding
 fn aes_cbc_decrypt(key: &[u8], data: &[u8], iv: &[u8]) -> Vec<u8> {
-    let mut plaintext = aes_cbc_decrypt_nopad(key, data, iv);
+    let mut plaintext = aes_ecb_decrypt_nopad(key, data, iv);
 
     let slice_end = data.len() - 16;
     xor_encrypt(&data[..slice_end], &mut plaintext[16..]);
 
     // Remove PKCS #7 padding
-    let padding_length = plaintext.last().unwrap();
-    let final_length = plaintext.len().saturating_sub(*padding_length as usize);
-    plaintext.truncate(final_length);
+    strip_pkcs7(&mut plaintext);
 
     plaintext
 }

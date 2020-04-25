@@ -49,9 +49,9 @@ pub fn aes_cbc_decrypt(key: &[u8], ciphertext: &[u8]) -> Vec<u8> {
     plaintext
 }
 
-pub fn aes_cbc_decrypt_nopad(key: &[u8], ciphertext: &[u8], iv: &[u8]) -> Vec<u8> {
+pub fn aes_decrypt_nopad(key: &[u8], ciphertext: &[u8], iv: &[u8], cipher: Cipher) -> Vec<u8> {
     let mut decrypter = Crypter::new(
-        Cipher::aes_128_ecb(),
+        cipher,
         Mode::Decrypt,
         key,
         Some(&iv)
@@ -71,9 +71,23 @@ pub fn aes_cbc_decrypt_nopad(key: &[u8], ciphertext: &[u8], iv: &[u8]) -> Vec<u8
     plaintext
 }
 
+pub fn aes_ecb_decrypt_nopad(key: &[u8], ciphertext: &[u8], iv: &[u8]) -> Vec<u8> {
+    aes_decrypt_nopad(key, ciphertext, iv, Cipher::aes_128_ecb())
+}
+
+pub fn aes_cbc_decrypt_nopad(key: &[u8], ciphertext: &[u8], iv: &[u8]) -> Vec<u8> {
+    aes_decrypt_nopad(key, ciphertext, iv, Cipher::aes_128_cbc())
+}
+
 pub fn gen_random_16_bytes() -> [u8; AES_BLOCK_SIZE] {
     let mut rng = rand::thread_rng();
 
     let key: [u8; AES_BLOCK_SIZE] = rng.gen();
     key
+}
+
+pub fn strip_pkcs7(inp: &mut Vec<u8>) {
+    let padding_length = inp.last().unwrap();
+    let final_length = inp.len().saturating_sub(*padding_length as usize);
+    inp.truncate(final_length);
 }
