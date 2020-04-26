@@ -1,6 +1,7 @@
 use crate::aes_utils::*;
 
 use crate::s2::c15::padding_validation;
+use crate::decode_utils::base64_from_str;
 
 pub trait IsServerOracle {
     fn get_ciphertext(&self) -> &[u8];
@@ -32,8 +33,8 @@ impl<'a> ServerOracle<'a> {
         let ind_bounded = usize::min(ind, plaintexts.len() - 1);
         ServerOracle {
             key: key,
-            plaintext: plaintexts[ind_bounded].as_bytes().to_vec(),
-            ciphertext: aes_cbc_encrypt(key, plaintexts[ind_bounded].as_bytes())
+            plaintext: base64_from_str(plaintexts[ind_bounded]),
+            ciphertext: aes_cbc_encrypt(key, &base64_from_str(plaintexts[ind_bounded]))
         }
     }
 }
