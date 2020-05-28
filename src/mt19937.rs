@@ -2,70 +2,77 @@
 // Implements 64 bit Mt19937 PRNG
 // (https://en.wikipedia.org/wiki/Mersenne_Twister)
 
-const W: u64 = 64;
-const N: usize = 312;
-const M: u64 = 156;
-const R: u64 = 31;
-const A: u64 = 0xB5026F5AA96619E9;
-const U: u64 = 29;
-const D: u64 = 0x5555555555555555;
-const S: u64 = 17;
-const B: u64 = 0x71D67FFFEDA60000;
-const T: u64 = 37;
-const C: u64 = 0xFFF7EEE000000000;
-const L: u64 = 43;
-const F: u64 = 6364136223846793005;
-const LOWER_MASK: u64 = (1 << R) - 1;
-const UPPER_MASK: u64 = !LOWER_MASK;
+pub mod consts {
+    pub const W: u64 = 64;
+    pub const N: usize = 312;
+    pub const M: u64 = 156;
+    pub const R: u64 = 31;
+    pub const A: u64 = 0xB5026F5AA96619E9;
+    pub const U: u64 = 29;
+    pub const D: u64 = 0x5555555555555555;
+    pub const S: u64 = 17;
+    pub const B: u64 = 0x71D67FFFEDA60000;
+    pub const T: u64 = 37;
+    pub const C: u64 = 0xFFF7EEE000000000;
+    pub const L: u64 = 43;
+    pub const F: u64 = 6364136223846793005;
+    pub const LOWER_MASK: u64 = (1 << R) - 1;
+    pub const UPPER_MASK: u64 = !LOWER_MASK;
+}
 
-struct Mt19937 {
-    mt: [u64; N as usize],
+pub struct Mt19937 {
+    mt: [u64; consts::N as usize],
     index: usize
 }
 
 impl Mt19937 {
     pub fn new(seed: u64) -> Mt19937 {
         let mut res = Mt19937 {
-            mt: [0; N as usize],
-            index: N
+            mt: [0; consts::N as usize],
+            index: consts::N
         };
 
         res.mt[0] = seed;
 
-        for i in 1..N {
-            res.mt[i] = (F as u128 * (res.mt[i-1] ^ (res.mt[i-1] >> (W-2))) as u128 + i as u128) as u64;
+        for i in 1..consts::N {
+            res.mt[i] = (
+                consts::F.wrapping_mul(
+                    res.mt[i-1] ^ (res.mt[i-1] >> (consts::W-2))
+                ) + i as u64
+            ) as u64;
         }
 
         return res
     }
 
     fn twist(&mut self) {
-        for i in 0..N {
+        for i in 0..consts::N {
             let x = 
-                (self.mt[i] & UPPER_MASK) + (self.mt[(i+1) % N] & LOWER_MASK)
+                (self.mt[i] & consts::UPPER_MASK) +
+                (self.mt[(i+1) % consts::N] & consts::LOWER_MASK)
             ;
 
             let mut x_a = x >> 1;
             if x % 2 != 0 {
-                x_a ^= A;
+                x_a ^= consts::A;
             }
 
-            self.mt[i] = self.mt[(i + M as usize) % N] ^ x_a;
+            self.mt[i] = self.mt[(i + consts::M as usize) % consts::N] ^ x_a;
         }
 
         self.index = 0;
     }
 
     pub fn extract(&mut self) -> u64 {
-        if self.index >= N {
+        if self.index >= consts::N {
             self.twist();
         }
 
-        let mut y: u128 = self.mt[self.index] as u128;
-        y = y ^ ((y >> U) & D as u128);
-        y = y ^ ((y << S) & B as u128);
-        y = y ^ ((y << T) & C as u128);
-        y = y ^ (y >> L);
+        let mut y = self.mt[self.index];
+        y = y ^ ((y >> consts::U) & consts::D);
+        y = y ^ ((y << consts::S) & consts::B);
+        y = y ^ ((y << consts::T) & consts::C);
+        y = y ^ (y >> consts::L);
     
         self.index += 1;
         return y as u64
