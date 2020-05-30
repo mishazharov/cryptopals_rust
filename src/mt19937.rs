@@ -63,19 +63,31 @@ impl Mt19937 {
         self.index = 0;
     }
 
+    pub fn temper(y1: u64) -> u64 {
+        let mut y = y1 ^ ((y1 >> consts::U) & consts::D);
+        y = y ^ ((y << consts::S) & consts::B);
+        y = y ^ ((y << consts::T) & consts::C);
+        return y ^ (y >> consts::L);
+    }
+
     pub fn extract(&mut self) -> u64 {
         if self.index >= consts::N {
             self.twist();
         }
 
-        let mut y = self.mt[self.index];
-        y = y ^ ((y >> consts::U) & consts::D);
-        y = y ^ ((y << consts::S) & consts::B);
-        y = y ^ ((y << consts::T) & consts::C);
-        y = y ^ (y >> consts::L);
+        let y = Mt19937::temper(self.mt[self.index]);
     
         self.index += 1;
         return y as u64
+    }
+}
+
+impl From<[u64; consts::N as usize]> for Mt19937 {
+    fn from(arr: [u64; consts::N as usize]) -> Self {
+        Mt19937 {
+            mt: arr,
+            index: consts::N
+        }
     }
 }
 
