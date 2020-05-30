@@ -68,6 +68,12 @@ mod tests {
     #[test]
     fn test_clone_mt19937() {
         let mut prng = Mt19937::new(1654545);
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..rng.gen_range(0, consts::N * 2 + 1) {
+            prng.extract();
+        }
+
         let mut new_prng: Mt19937 = clone_mt19937(&mut prng);
 
         for _ in 0..1000 {
