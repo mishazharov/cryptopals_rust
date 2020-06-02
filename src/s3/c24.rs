@@ -36,10 +36,10 @@ fn prefix_plaintext(key: u16, known_pt: &[u8]) -> Vec<u8> {
     ctr_mt19937(key, &pt)
 }
 
-fn break_ctr_mt19937(known_pt: &[u8], ct: &[u8]) -> u16 {
+fn break_ctr_mt19937(known_pt: &[u8], ct: &[u8]) -> Option<u16> {
     // Tests shouldn't trigger this
     if known_pt.len() < 16 || known_pt.len() > ct.len() {
-        panic!("Known PT is too short")
+        return None;
     }
 
     let known_ct = ct[ct.len() - known_pt.len()..ct.len()].to_vec();
@@ -61,10 +61,10 @@ fn break_ctr_mt19937(known_pt: &[u8], ct: &[u8]) -> u16 {
         let g = mt.extract();
         println!("{}", g);
         if g == target_val {
-            return i;
+            return Some(i);
         }
     }
-    0
+    None
 }
 
 #[cfg(test)]
@@ -86,11 +86,42 @@ mod tests {
 
     #[test]
     fn test_break_ctr_mt19937() {
-        let mut rng = rand::thread_rng();
-        let known_pt = b"AAAAAAAAAAAAAAAAAAAA";
-        let key = rng.gen();
-        let ct = prefix_plaintext(key, known_pt);
+        for _ in 0..3 {
+            let mut rng = rand::thread_rng();
+            let known_pt = b"AAAAAAAAAAAAAAAAAAAA";
+            let key = rng.gen();
+            let ct = prefix_plaintext(key, known_pt);
 
-        assert_eq!(break_ctr_mt19937(known_pt, &ct), key);
+            match break_ctr_mt19937(known_pt, &ct) {
+                Some(r) => assert_eq!(r, key),
+                None => assert!(false)
+            }
+        }
+    }
+
+    #[test]
+    fn test_password_reset_token() {
+        let reset_token = b"password_reset_request=user@example.com";
+        let mut rng = rand::thread_rng();
+        
+        for _ in 0..25 {
+            let key = rng.gen();
+            let ct = prefix_plaintext(
+                key,
+                reset_token
+            );
+
+            let mut rand_bytes: Vec<u8> = Vec::new();
+            for _ in 0..rng.gen_range(40, 60) {
+                rand_bytes.push(rng.gen());
+            }
+
+            if rng.gen_bool(0.5) {
+                assert_eq!(break_ctr_mt19937(reset_token, &ct), Some(key))
+            } else {
+                assert_eq!(break_ctr_mt19937(reset_token, &rand_bytes), None)
+            }
+        }
+
     }
 }
