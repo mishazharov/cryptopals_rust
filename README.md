@@ -4,7 +4,7 @@ This repository contains my current solutions for the cryptopals problem set (ht
 ## Dependencies
 Tested with `rustc --version`:
 ```
-rustc 1.43.0 (4fb7144ed 2020-04-20)
+rustc 1.44.1 (c7087fe00 2020-06-17)
 ```
 Other dependencies are listed in `Cargo.toml`
 ## Running
