@@ -34,7 +34,7 @@ impl<'a> ServerOracle<'a> {
         ServerOracle {
             key: key,
             plaintext: base64_from_str(plaintexts[ind_bounded]),
-            ciphertext: aes_cbc_encrypt(key, &base64_from_str(plaintexts[ind_bounded]))
+            ciphertext: aes_cbc_encrypt(key, &base64_from_str(plaintexts[ind_bounded]), None)
         }
     }
 }

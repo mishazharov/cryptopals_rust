@@ -63,7 +63,7 @@ mod tests {
     fn test_server_oracle() {
         let key = gen_random_16_bytes();
         let so = ServerOracle {
-            crypter: &AesCbcWrapper::new(&key)
+            crypter: &AesCbcWrapper::new(&key, None, true)
         };
         assert_eq!(so.is_client_admin(so.encrypt(b";admin=true;")), false);
     }
@@ -72,7 +72,7 @@ mod tests {
     fn test_attack_server_oracle() {
         let key = gen_random_16_bytes();
         let so = ServerOracle {
-            crypter: &AesCbcWrapper::new(&key)
+            crypter: &AesCbcWrapper::new(&key, None, true)
         };
         assert_eq!(so.is_client_admin(attack_server(&so)), true);
     }

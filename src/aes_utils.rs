@@ -31,49 +31,57 @@ pub fn aes_ecb_decrypt(key: &[u8], ciphertext: &[u8]) -> Vec<u8> {
     plaintext
 }
 
-pub fn aes_cbc_encrypt(key: &[u8], plaintext: &[u8]) -> Vec<u8> {
+pub fn aes_cbc_encrypt(key: &[u8], plaintext: &[u8], iv: Option<[u8; AES_BLOCK_SIZE]>) -> Vec<u8> {
     let cipher = Cipher::aes_128_cbc();
-    let iv = [0u8; 16];
+    let real_iv = iv.unwrap_or_default();
     let ciphertext = encrypt(
         cipher,
         key,
-        Some(&iv),
+        Some(&real_iv),
         plaintext
     ).unwrap();
     ciphertext
 }
 
-pub fn aes_cbc_decrypt(key: &[u8], ciphertext: &[u8]) -> Vec<u8> {
+pub fn aes_cbc_decrypt(key: &[u8], ciphertext: &[u8], iv: Option<[u8; AES_BLOCK_SIZE]>) -> Vec<u8> {
     let cipher = Cipher::aes_128_cbc();
-    let iv = [0u8; 16];
+    let real_iv = iv.unwrap_or_default();
     let plaintext = decrypt(
         cipher,
         key,
-        Some(&iv),
+        Some(&real_iv),
         ciphertext
     ).unwrap();
     plaintext
 }
 
 pub struct AesCbcWrapper<'a> {
-    key: &'a[u8]
+    key: &'a[u8],
+    iv: Option<[u8; AES_BLOCK_SIZE]>,
+    padding: bool
 }
 
 impl<'a> AesCbcWrapper<'a> {
-    pub fn new(key: &'a[u8]) -> AesCbcWrapper<'a> {
+    pub fn new(key: &'a[u8], iv: Option<[u8; AES_BLOCK_SIZE]>, padding: bool) -> AesCbcWrapper<'a> {
         return AesCbcWrapper {
-            key: key
+            key: key,
+            iv: iv,
+            padding: padding
         }
     }
 }
 
 impl<'a> CryptoWrapper for AesCbcWrapper<'a> {
     fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
-        aes_cbc_encrypt(self.key, plaintext)
+        aes_cbc_encrypt(self.key, plaintext, self.iv)
     }
 
     fn decrypt(&self, ct: &[u8]) -> Vec<u8> {
-        aes_cbc_decrypt(self.key, ct)
+        if self.padding {
+            aes_cbc_decrypt(self.key, ct, self.iv)
+        } else {
+            aes_cbc_decrypt_nopad(self.key, ct, &self.iv.unwrap_or_default())
+        }
     }
 }
 
@@ -91,7 +99,7 @@ pub fn aes_decrypt_nopad(key: &[u8], ciphertext: &[u8], iv: &[u8], cipher: Ciphe
     // Because when using ECB, the padding in the plaintext
     // will be invalid (until we XOR it with the ciphertext)
     decrypter.pad(false);
-    let mut plaintext = vec![0; ciphertext.len() + 16];
+    let mut plaintext = vec![0; ciphertext.len() + AES_BLOCK_SIZE];
 
     let mut count = decrypter.update(&ciphertext, &mut plaintext).unwrap();
     count += decrypter.finalize(&mut plaintext[count..]).unwrap();
