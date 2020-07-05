@@ -5,12 +5,18 @@ pub trait IsOracle {
 }
 
 pub struct ServerOracle<'a> {
-    pub key: &'a[u8]
+    crypter: &'a (dyn CryptoWrapper + 'a)
 }
 
 impl<'a> ServerOracle<'a> {
-    fn is_client_admin(&self, data_encrypted: Vec<u8>) -> bool {
-        let data_plaintext = aes_cbc_decrypt(self.key, &data_encrypted);
+    pub fn new(crypter: &'a (dyn CryptoWrapper + 'a)) -> ServerOracle<'a> {
+        ServerOracle {
+            crypter: crypter
+        }
+    }
+
+    pub fn is_client_admin(&self, data_encrypted: Vec<u8>) -> bool {
+        let data_plaintext = self.crypter.decrypt(&data_encrypted);
         let data_decrypted_string = String::from_utf8_lossy(&data_plaintext);
         println!("{}", data_decrypted_string);
         data_decrypted_string.contains(";admin=true;")
@@ -32,7 +38,7 @@ impl<'a> IsOracle for ServerOracle<'a> {
 
         vec_contents.extend_from_slice(";comment2=%20like%20a%20pound%20of%20bacon".as_bytes());
         
-        aes_cbc_encrypt(self.key, &vec_contents)
+        self.crypter.encrypt(&vec_contents)
     }
 }
 
@@ -55,16 +61,18 @@ mod tests {
 
     #[test]
     fn test_server_oracle() {
+        let key = gen_random_16_bytes();
         let so = ServerOracle {
-            key: &gen_random_16_bytes()
+            crypter: &AesCbcWrapper::new(&key)
         };
         assert_eq!(so.is_client_admin(so.encrypt(b";admin=true;")), false);
     }
 
     #[test]
     fn test_attack_server_oracle() {
+        let key = gen_random_16_bytes();
         let so = ServerOracle {
-            key: &gen_random_16_bytes()
+            crypter: &AesCbcWrapper::new(&key)
         };
         assert_eq!(so.is_client_admin(attack_server(&so)), true);
     }

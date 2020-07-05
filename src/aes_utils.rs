@@ -4,6 +4,10 @@ use rand::Rng;
 use crate::s1::c6::xor_vecs;
 
 pub const AES_BLOCK_SIZE: usize = 16;
+pub trait CryptoWrapper {
+    fn encrypt(&self, plaintext: &[u8]) -> Vec<u8>;
+    fn decrypt(&self, ct: &[u8]) -> Vec<u8>;
+}
 
 pub fn aes_ecb_encrypt(key: &[u8], plaintext: &[u8]) -> Vec<u8> {
     let cipher = Cipher::aes_128_ecb();
@@ -49,6 +53,28 @@ pub fn aes_cbc_decrypt(key: &[u8], ciphertext: &[u8]) -> Vec<u8> {
         ciphertext
     ).unwrap();
     plaintext
+}
+
+pub struct AesCbcWrapper<'a> {
+    key: &'a[u8]
+}
+
+impl<'a> AesCbcWrapper<'a> {
+    pub fn new(key: &'a[u8]) -> AesCbcWrapper<'a> {
+        return AesCbcWrapper {
+            key: key
+        }
+    }
+}
+
+impl<'a> CryptoWrapper for AesCbcWrapper<'a> {
+    fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
+        aes_cbc_encrypt(self.key, plaintext)
+    }
+
+    fn decrypt(&self, ct: &[u8]) -> Vec<u8> {
+        aes_cbc_decrypt(self.key, ct)
+    }
 }
 
 pub fn aes_decrypt_nopad(key: &[u8], ciphertext: &[u8], iv: &[u8], cipher: Cipher) -> Vec<u8> {
@@ -118,4 +144,28 @@ pub fn aes_ctr_crypt(key: &[u8], text: &[u8], nonce: u64) -> Vec<u8> {
     let mut keystream_ct = aes_ecb_encrypt(key, &keystream_pt);
     keystream_ct.truncate(text.len());
     xor_vecs(text, &keystream_ct).unwrap()
+}
+
+pub struct AesCtrWrapper<'a> {
+    key: &'a[u8],
+    nonce: u64
+}
+
+impl<'a> AesCtrWrapper<'a> {
+    pub fn new(key: &'a[u8], nonce: u64) -> AesCtrWrapper<'a> {
+        AesCtrWrapper {
+            key: key,
+            nonce: nonce
+        }
+    }
+}
+
+impl<'a> CryptoWrapper for AesCtrWrapper<'a> {
+    fn encrypt(&self, plaintext: &[u8]) -> Vec<u8> {
+        aes_ctr_crypt(self.key, plaintext, self.nonce)
+    }
+
+    fn decrypt(&self, ct: &[u8]) -> Vec<u8> {
+        aes_ctr_crypt(self.key, ct, self.nonce)
+    }
 }
