@@ -1,48 +1,31 @@
 // An implementation of RFC3174 (https://tools.ietf.org/rfc/rfc3174.txt)
 // For practicality, only bit lengths that are multiples of 8 are allowed
 
-trait Sha1Paddable {
+trait Sha1able {
+    // This function will return the last block appropriately padded
     fn sha1pad(&self) -> Vec<u8>;
 }
 
-impl Sha1Paddable for Vec<u8> {
+impl Sha1able for &[u8] {
     fn sha1pad(&self) -> Vec<u8> {
-        let mut res = self.to_vec();
-        let byteslength = res.len();
+        let block_len_bytes = 64;
+        let mut res = vec![0u8; block_len_bytes];
+        let byteslength = self.len();
 
-        // Add 9 bytes for a u64, and byte. The byte=0b10000000 as defined in the spec
-        // and appended to res. The other 8 bytes are for a u64 (length field, see spec)
-        let num_non_zeros = byteslength + 9;
+        let end_of_last_whole_block = (byteslength / block_len_bytes) * block_len_bytes;
+        let num_bytes_to_copy = byteslength - end_of_last_whole_block;
+        res[num_bytes_to_copy] = 0x80;
+        res[0..num_bytes_to_copy].copy_from_slice(&self[end_of_last_whole_block..byteslength]);
 
-        // 64 bytes is 512 bits
-        let num_new_zeros = 64 - (num_non_zeros) % 64;
-
-        res.resize(num_new_zeros + num_non_zeros, 0);
-
-        res[byteslength] = 0x80;
-
-        // bitlength is the size of the original message in bits
-        // Called `l` in the spec
-        let bitlength = (byteslength * 8) as u64;
-
-        let eight_from_end = res.len() - 8;
-        res[eight_from_end..].copy_from_slice(&bitlength.to_ne_bytes());
-
+        let bitslength = byteslength * 8;
+        res[block_len_bytes - 8..].copy_from_slice(&bitslength.to_ne_bytes());
         res
     }
 }
 
-impl Sha1Paddable for &[u8] {
+impl Sha1able for Vec<u8> {
     fn sha1pad(&self) -> Vec<u8> {
-        let v = self.to_vec();
-        v.sha1pad()
-    }
-}
-
-impl Sha1Paddable for [u8] {
-    fn sha1pad(&self) -> Vec<u8> {
-        let v = self.to_vec();
-        v.sha1pad()
+        (&self[..]).sha1pad()
     }
 }
 
