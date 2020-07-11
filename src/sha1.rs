@@ -37,6 +37,12 @@ impl Sha1able for Vec<u8> {
     }
 }
 
+impl Sha1able for &[u8] {
+    fn sha1pad(&self) -> Vec<u8> {
+        self.to_vec().sha1pad()
+    }
+}
+
 pub fn sha1_no_alloc_block_proc(
     h: &mut [u32; SHA1_LEN_BYTES / 4],
     msg_block: &[u8]
@@ -45,7 +51,6 @@ pub fn sha1_no_alloc_block_proc(
         panic!("Message length should have been 64 bytes. Was {}", msg_block.len());
     }
 
-    let mut a = [0u32; SHA1_LEN_BYTES / 4];
     let mut w = [0u32; 80];
 
     for i in 0..16 {
@@ -56,6 +61,7 @@ pub fn sha1_no_alloc_block_proc(
         w[t] = s(1, w[t - 3] ^ w[t - 8] ^ w[t - 14] ^ w[t - 16])
     }
 
+    let mut a = [0u32; SHA1_LEN_BYTES / 4];
     a.copy_from_slice(h);
 
     for t in 0..80 {
@@ -74,8 +80,6 @@ pub fn sha1_no_alloc_block_proc(
 
 pub fn sha1(content: &dyn Sha1able) -> Vec<u8> {
     let padded = content.sha1pad();
-    println!("{:?}", padded);
-    let mut res = vec![0u8; SHA1_LEN_BYTES];
     let mut h = [
         0x67452301,
         0xEFCDAB89,
@@ -88,11 +92,7 @@ pub fn sha1(content: &dyn Sha1able) -> Vec<u8> {
         sha1_no_alloc_block_proc(&mut h, &padded[i * BLOCK_LEN_BYTES..(i + 1) * BLOCK_LEN_BYTES]);
     }
 
-    for i in 0..h.len() {
-        res[i * 4..(i + 1) * 4].copy_from_slice(&h[i].to_be_bytes());
-    }
-
-    res
+    h.to_vec().iter().flat_map(|x| x.to_be_bytes().to_vec()).collect()
 }
 
 fn k(t: usize) -> u32 {

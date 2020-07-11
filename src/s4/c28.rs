@@ -1,12 +1,12 @@
 use crate::sha1::*;
 
-fn sha1_keyed_mac(content: &[u8], key: &[u8]) -> Vec<u8> {
+pub fn sha1_keyed_mac(content: &[u8], key: &[u8]) -> Vec<u8> {
     let mut to_hash = key.to_vec();
     to_hash.extend_from_slice(&content);
     sha1(&to_hash)
 }
 
-fn sha1_verify_mac(content: &[u8], key: &[u8], hash: &[u8]) -> bool {
+pub fn sha1_verify_mac(content: &[u8], key: &[u8], hash: &[u8]) -> bool {
     &sha1_keyed_mac(content, key)[..] == hash
 }
 
