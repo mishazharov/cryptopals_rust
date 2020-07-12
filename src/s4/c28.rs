@@ -1,4 +1,4 @@
-use crate::sha1::*;
+use crate::hashing::sha1::*;
 
 pub fn sha1_keyed_mac(content: &[u8], key: &[u8]) -> Vec<u8> {
     let mut to_hash = key.to_vec();

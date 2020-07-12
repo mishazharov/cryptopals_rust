@@ -1,5 +1,5 @@
-use crate::sha1::*;
-use crate::sha1::Sha1able;
+use crate::hashing::sha1::*;
+use crate::hashing::hash_padding::HashPaddable;
 use std::convert::TryInto;
 
 
@@ -9,12 +9,12 @@ fn break_sha1_mac(hash_orig: &[u8], message: &[u8], to_append: &[u8], keysize: u
         res[i] = u32::from_be_bytes(hash_orig[i * 4..i * 4 + 4].try_into().unwrap())
     }
 
-    let mut new_data = to_append.sha1pad();
+    let mut new_data = to_append.hashpad(true);
     let new_data_len = new_data.len();
 
     let mut ret = vec![0u8; keysize as usize];
     ret.extend_from_slice(message);
-    ret = ret.sha1pad();
+    ret = ret.hashpad(true);
     let pre_append_len = ret.len();
     ret.extend_from_slice(to_append);
     ret.drain(0..keysize as usize);
@@ -24,7 +24,7 @@ fn break_sha1_mac(hash_orig: &[u8], message: &[u8], to_append: &[u8], keysize: u
         &(total_len as u64).to_be_bytes()
     );
 
-    sha1_no_alloc_block_proc(res, &new_data);
+    sha1_process_block(res, &new_data);
 
     ret
 }

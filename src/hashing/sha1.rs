@@ -2,52 +2,12 @@
 // For practicality, only bit lengths that are multiples of 8 are allowed
 use std::convert::TryInto;
 use std::num::Wrapping;
+use crate::hashing::hash_padding::*;
 
-const BLOCK_LEN_BYTES: usize = 64;
 const SHA1_LEN_BYTES: usize = 20;
 
-pub trait Sha1able {
-    fn sha1pad(&self) -> Vec<u8>;
-}
-
-impl Sha1able for Vec<u8> {
-    fn sha1pad(&self) -> Vec<u8> {
-        let mut res = self.to_vec();
-        let byteslength = res.len();
-
-        // Add 9 bytes for a u64, and byte. The byte=0b10000000 as defined in the spec
-        // and appended to res. The other 8 bytes are for a u64 (length field, see spec)
-        let num_non_zeros = byteslength + 9;
-
-        // 64 bytes is 512 bits
-        let mut num_new_zeros = BLOCK_LEN_BYTES - (num_non_zeros) % BLOCK_LEN_BYTES;
-        if num_new_zeros == BLOCK_LEN_BYTES {
-            num_new_zeros = 0;
-        }
-
-        res.resize(num_new_zeros + num_non_zeros, 0);
-
-        res[byteslength] = 0x80;
-
-        // bitlength is the size of the original message in bits
-        // Called `l` in the spec
-        let bitlength = (byteslength * 8) as u64;
-
-        let eight_from_end = res.len() - 8;
-        res[eight_from_end..].copy_from_slice(&bitlength.to_be_bytes());
-
-        res
-    }
-}
-
-impl Sha1able for &[u8] {
-    fn sha1pad(&self) -> Vec<u8> {
-        self.to_vec().sha1pad()
-    }
-}
-
-pub fn sha1_no_alloc_block_proc(h: &mut [u32; SHA1_LEN_BYTES / 4], msg_block: &[u8]) {
-    if msg_block.len() != BLOCK_LEN_BYTES {
+pub fn sha1_process_block(h: &mut [u32; SHA1_LEN_BYTES / 4], msg_block: &[u8]) {
+    if msg_block.len() != HASH_BLOCK_LEN_BYTES {
         panic!(
             "Message length should have been 64 bytes. Was {}",
             msg_block.len()
@@ -64,8 +24,7 @@ pub fn sha1_no_alloc_block_proc(h: &mut [u32; SHA1_LEN_BYTES / 4], msg_block: &[
         w[t] = s(1, w[t - 3] ^ w[t - 8] ^ w[t - 14] ^ w[t - 16])
     }
 
-    let mut a = [0u32; SHA1_LEN_BYTES / 4];
-    a.copy_from_slice(h);
+    let mut a = *h;
 
     for t in 0..80 {
         let temp = Wrapping(s(5, a[0]))
@@ -85,14 +44,14 @@ pub fn sha1_no_alloc_block_proc(h: &mut [u32; SHA1_LEN_BYTES / 4], msg_block: &[
     }
 }
 
-pub fn sha1(content: &dyn Sha1able) -> Vec<u8> {
-    let padded = content.sha1pad();
+pub fn sha1(content: &dyn HashPaddable) -> Vec<u8> {
+    let padded = content.hashpad(true);
     let mut h = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0];
 
-    for i in 0..padded.len() / BLOCK_LEN_BYTES {
-        sha1_no_alloc_block_proc(
+    for i in 0..padded.len() / HASH_BLOCK_LEN_BYTES {
+        sha1_process_block(
             &mut h,
-            &padded[i * BLOCK_LEN_BYTES..(i + 1) * BLOCK_LEN_BYTES],
+            &padded[i * HASH_BLOCK_LEN_BYTES..(i + 1) * HASH_BLOCK_LEN_BYTES],
         );
     }
 
@@ -110,10 +69,6 @@ fn k(t: usize) -> u32 {
         60..=79 => return 0xCA62C1D6,
         _ => panic!("sha1.rs: `t` out of range in `K` t={}", t),
     }
-}
-
-fn s(n: usize, x: u32) -> u32 {
-    (x << n) | (x >> (32 - n))
 }
 
 fn f(t: usize, b: u32, c: u32, d: u32) -> u32 {
@@ -148,17 +103,17 @@ mod tests {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x28,
         ];
 
-        assert_eq!(&input.sha1pad(), &expected_usize)
+        assert_eq!(&input.hashpad(true), &expected_usize)
     }
 
     #[test]
     fn test_sha1_padding_2() {
         let input: Vec<u8> = vec![0u8; 55];
-        let mut expected_out = vec![0u8; BLOCK_LEN_BYTES];
+        let mut expected_out = vec![0u8; HASH_BLOCK_LEN_BYTES];
         expected_out[56..].copy_from_slice(&(55 * 8 as u64).to_be_bytes());
         expected_out[55] = 0x80;
 
-        assert_eq!(input.sha1pad(), expected_out);
+        assert_eq!(input.hashpad(true), expected_out);
     }
 
     #[test]
@@ -171,7 +126,7 @@ mod tests {
 
     #[test]
     fn test_sha1_random() {
-        for i in 0..500 {
+        for _ in 0..500 {
             let mut rng = rand::thread_rng();
             let data: Vec<u8> = rng
                 .sample_iter(Standard)
