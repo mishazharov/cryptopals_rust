@@ -4,7 +4,7 @@ use std::convert::TryInto;
 use std::num::Wrapping;
 use crate::hashing::hash_padding::*;
 
-const SHA1_LEN_BYTES: usize = 20;
+pub const SHA1_LEN_BYTES: usize = 20;
 
 pub fn sha1_process_block(h: &mut [u32; SHA1_LEN_BYTES / 4], msg_block: &[u8]) {
     if msg_block.len() != HASH_BLOCK_LEN_BYTES {
