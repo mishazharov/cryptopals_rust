@@ -74,10 +74,6 @@ mod tests {
 
             // If the server fails to verify we try again
             keylen += 1;
-
-            if keylen > 5 {
-                assert!(false);
-            }
         }
     }
 }

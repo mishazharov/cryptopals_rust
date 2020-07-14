@@ -104,7 +104,7 @@ mod tests {
         let reset_token = b"password_reset_request=user@example.com";
         let mut rng = rand::thread_rng();
         
-        for _ in 0..25 {
+        for _ in 0..1 {
             let key = rng.gen();
             let ct = prefix_plaintext(
                 key,

@@ -11,4 +11,9 @@ hex = "0.4.2"
 base64 = "0.12.0"
 openssl = "0.10.29"
 rand = "0.7.3"
-md4 = "0.9.0"    # For testing
+
+[dev-dependencies]
+tokio = { version = "0.2", features = ["macros"] }
+warp = "0.2"
+md4 = "0.9.0"
+serde = { version = "1.0", features = ["derive"] }
