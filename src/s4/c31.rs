@@ -1,5 +1,11 @@
+// If the test starts failing, bump this up
+const SERVER_CMP_SLEEP: u64 = 1;
+// Or increase this one
+const SAMPLE_SIZE: usize = 5;
+
 #[cfg(test)]
 mod tests {
+    use super::*;
     use tokio::sync::oneshot;
     use serde::Deserialize;
     use warp::Filter;
@@ -30,7 +36,7 @@ mod tests {
             if vec1[i] != vec2[i] {
                 return false;
             }
-            thread::sleep(time::Duration::from_millis(5));
+            thread::sleep(time::Duration::from_millis(SERVER_CMP_SLEEP));
         }
 
         true
@@ -54,27 +60,29 @@ mod tests {
         for index in 0..hash.len() {
             let mut guess_results = vec![time::Duration::new(0, 0); 256];
 
-            for guess in 0u8..=255 {
-                hash[index] = guess;
-
-                let uri = format!(
-                    "http://localhost:1337/test?file={}&signature={}",
-                    new_file,
-                    &hex::encode(&hash)
-                );
-
-                let request = Request::get(
-                    uri
-                ).body(Body::from("")).unwrap();
-
-                let start = time::Instant::now();
-                let response = client.request(request).await.unwrap();
-                guess_results[guess as usize] = start.elapsed();
-
-                let status = response.status();
-                if status == hyper::StatusCode::OK {
-                    println!("\nFound hash on index {}", index);
-                    return Ok(hash)
+            for _ in 0..SAMPLE_SIZE {
+                for guess in 0u8..=255 {
+                    hash[index] = guess;
+    
+                    let uri = format!(
+                        "http://localhost:1337/test?file={}&signature={}",
+                        new_file,
+                        &hex::encode(&hash)
+                    );
+    
+                    let request = Request::get(
+                        uri
+                    ).body(Body::from("")).unwrap();
+    
+                    let start = time::Instant::now();
+                    let response = client.request(request).await.unwrap();
+                    guess_results[guess as usize] = (start.elapsed() + guess_results[guess as usize]) / 2;
+    
+                    let status = response.status();
+                    if status == hyper::StatusCode::OK {
+                        println!("\nFound hash on index {}", index);
+                        return Ok(hash)
+                    }
                 }
             }
 
