@@ -1,13 +1,9 @@
-extern crate openssl;
-
-use openssl::sha;
-
-use crate::decode_utils::base64_from_str;
-use crate::aes_utils::*;
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use openssl::sha;
+
+    use crate::symmetric::aes::*;
+    use crate::utils::decode::base64_from_str;
 
     #[test]
     fn test_aes_ecb () {

@@ -1,11 +1,9 @@
-use crate::aes_utils::*;
-use crate::decode_utils::base64_from_str;
-
 // `aes_ctr_crypt` implemented in aes_utils.rs
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::symmetric::aes::*;
+    use crate::utils::decode::base64_from_str;
 
     #[test]
     fn test_aes_ctr_decrypt() {

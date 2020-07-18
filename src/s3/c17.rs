@@ -1,7 +1,7 @@
-use crate::aes_utils::*;
+use crate::symmetric::aes::*;
 
 use crate::s2::c15::padding_validation;
-use crate::decode_utils::base64_from_str;
+use crate::utils::decode::base64_from_str;
 
 pub trait IsServerOracle {
     fn get_ciphertext(&self) -> &[u8];

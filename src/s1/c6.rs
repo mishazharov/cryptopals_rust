@@ -5,11 +5,8 @@ extern crate openssl;
 use std::cmp;
 use std::error::Error;
 
-use openssl::sha;
-
 use super::c4::xor_break;
 use super::c5::xor_encrypt;
-use crate::decode_utils::base64_from_str;
 
 struct XorRepeatingResult {
     plaintext: Vec<u8>,
@@ -87,6 +84,8 @@ fn xor_break_repeating(byte_arr: &[u8]) -> XorRepeatingResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::decode::base64_from_str;
+    use openssl::sha;
 
     #[test]
     fn test_hamming_distance() {

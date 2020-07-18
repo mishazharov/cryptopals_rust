@@ -1,4 +1,4 @@
-use crate::aes_utils::*;
+use crate::symmetric::aes::*;
 
 pub trait IsOracle {
     fn encrypt(&self, plaintext: &[u8]) -> Vec<u8>;

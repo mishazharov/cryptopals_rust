@@ -1,8 +1,5 @@
-use crate::aes_utils::*;
-use crate::s2::c16::ServerOracle;
+use crate::symmetric::aes::*;
 use crate::s2::c16::IsOracle;
-
-use rand::Rng;
 
 pub fn attack_server<T: IsOracle>(oracle: &T) -> Vec<u8> {
     // "<" is 0x3C. "=" is 0x3D
@@ -20,6 +17,8 @@ pub fn attack_server<T: IsOracle>(oracle: &T) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::s2::c16::ServerOracle;
+    use rand::Rng;
 
     #[test]
     fn test_server_oracle() {

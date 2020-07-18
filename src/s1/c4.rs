@@ -1,7 +1,6 @@
 extern crate hex;
 
 use super::c5::xor_encrypt;
-use crate::decode_utils::hex_arr_from_str;
 
 pub struct XorSingleResult {
     pub plaintext: Vec<u8>,
@@ -119,6 +118,7 @@ fn xor_break_multi(vecs: &Vec<Vec<u8>>) -> XorSingleResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::decode::hex_arr_from_str;
 
     #[test]
     fn test_xor_break() {

@@ -5,9 +5,7 @@ extern crate hex;
 use rand::Rng;
 use rand::distributions::Standard;
 
-use crate::aes_utils::*;
-
-use super::c11::detect_ecb_from_stream;
+use crate::symmetric::aes::*;
 
 pub mod oracle {
     use super::*;
@@ -231,6 +229,7 @@ pub mod attacker {
 mod tests {
     use super::*;
     use super::oracle::*;
+    use crate::s2::c11::detect_ecb_from_stream;
 
     fn run_base64_test(base64_secret: &str) {
         let secret = base64::decode(

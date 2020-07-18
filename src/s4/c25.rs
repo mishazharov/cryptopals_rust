@@ -1,7 +1,6 @@
-use crate::aes_utils::*;
+use crate::symmetric::aes::*;
 use rand;
 use rand::Rng;
-use crate::s1::c6::xor_vecs;
 
 struct CtrContainer {
     key: [u8; 16],
@@ -45,6 +44,7 @@ impl CtrContainer {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::s1::c6::xor_vecs;
 
     #[test]
     fn test_ctr_edit_decrypt() {

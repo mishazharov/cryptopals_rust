@@ -1,12 +1,8 @@
-extern crate hex;
-
-use crate::decode_utils::hex_arr_from_str;
-
 use std::error::Error;
 
 use std::collections::HashMap;
 
-use crate::aes_utils::AES_BLOCK_SIZE;
+use crate::symmetric::aes::AES_BLOCK_SIZE;
 
 // The array passed in should be a multiple of 16 if it's ecb
 pub fn is_aes_ecb(candidate: &[u8]) -> Result<bool, Box<dyn Error>> {
@@ -44,6 +40,8 @@ fn detect_aes_ecb(candidates: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use hex;
+    use crate::utils::decode::hex_arr_from_str;
 
     #[test]
     fn test_detect_aes_ecb() {

@@ -1,5 +1,4 @@
-use crate::mt19937::{consts, Mt19937};
-use rand::{self, Rng};
+use crate::rng::mt19937::{consts, Mt19937};
 
 // This function is pretty messy
 fn untemper(y1: u64) -> u64 {
@@ -64,6 +63,7 @@ fn clone_mt19937(mt: &mut Mt19937) -> Mt19937 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::{self, Rng};
 
     #[test]
     fn test_clone_mt19937() {

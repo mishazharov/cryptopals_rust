@@ -1,6 +1,5 @@
-use crate::mt19937::{Mt19937};
+use crate::rng::mt19937::Mt19937;
 use std::time::{SystemTime, UNIX_EPOCH};
-use rand::{self, Rng};
 
 fn mt19937_first_output_to_seed(output: u64) -> u64 {
 
@@ -19,6 +18,7 @@ fn mt19937_first_output_to_seed(output: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::{self, Rng};
 
     #[test]
     fn test_mt19937_brute_force() {

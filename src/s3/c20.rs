@@ -1,7 +1,5 @@
-use crate::aes_utils::*;
-use crate::decode_utils::base64_from_str;
+use crate::symmetric::aes::*;
 
-use crate::s1::c6::xor_vecs;
 use crate::s1::c4::xor_break;
 
 trait CtProvider {
@@ -73,6 +71,8 @@ fn attacker<T: CtProvider>(ct_provider: &T) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::s1::c6::xor_vecs;
+    use crate::utils::decode::base64_from_str;
 
     #[test]
     fn test_break_aes_ctr() {

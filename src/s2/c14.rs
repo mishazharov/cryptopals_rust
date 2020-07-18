@@ -1,17 +1,13 @@
-extern crate base64;
-
-use crate::aes_utils::*;
-
-use super::c11::detect_ecb_from_stream;
-use super::c12::oracle::*;
-use super::c12::attacker;
-
-use rand::Rng;
-use rand::distributions::Standard;
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::symmetric::aes::*;
+
+    use crate::s2::c11::detect_ecb_from_stream;
+    use crate::s2::c12::oracle::*;
+    use crate::s2::c12::attacker;
+
+    use rand::Rng;
+    use rand::distributions::Standard;
 
     fn run_base64_test(base64_secret: &str) {
         let secret = base64::decode(

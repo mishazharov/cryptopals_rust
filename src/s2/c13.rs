@@ -1,10 +1,6 @@
 extern crate rand;
 
-use crate::aes_utils::*;
-
-use rand::Rng;
-
-use super::c9::pad_pkcs7;
+use crate::symmetric::aes::*;
 
 struct UserAccount {
     email: String,
@@ -64,6 +60,8 @@ impl<'a> EmailOracle <'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::Rng;
+    use crate::s2::c9::pad_pkcs7;
 
     #[test]
     fn test_aes_ecb_copy_paste() {

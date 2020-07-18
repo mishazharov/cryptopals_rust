@@ -1,12 +1,7 @@
 extern crate openssl;
 
-use openssl::sha;
-
-use crate::aes_utils::*;
-use crate::decode_utils::base64_from_str;
-
+use crate::symmetric::aes::*;
 use crate::s1::c5::xor_encrypt;
-use crate::aes_utils::AES_BLOCK_SIZE;
 
 // Decrypts AES CBC data assuming that it is using PKCS #7 padding
 fn aes_cbc_decrypt(key: &[u8], data: &[u8], iv: &[u8]) -> Vec<u8> {
@@ -24,6 +19,8 @@ fn aes_cbc_decrypt(key: &[u8], data: &[u8], iv: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::decode::base64_from_str;
+    use openssl::sha;
 
     #[test]
     fn test_aes_cbc() {

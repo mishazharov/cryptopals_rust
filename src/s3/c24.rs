@@ -1,4 +1,4 @@
-use crate::mt19937::Mt19937;
+use crate::rng::mt19937::Mt19937;
 use rand::{self, Rng};
 use crate::s1::c6::xor_vecs;
 use std::convert::TryInto;
