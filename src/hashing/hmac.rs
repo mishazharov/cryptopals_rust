@@ -1,6 +1,4 @@
-use crate::hashing::hash_padding::HashPaddable;
-
-pub fn hmac(key: &[u8], message: &[u8], hash_fn: fn (&dyn HashPaddable) -> Vec<u8>, blocksize: usize) -> Vec<u8> {
+pub fn hmac(key: &[u8], message: &[u8], hash_fn: fn (&Vec<u8>) -> Vec<u8>, blocksize: usize) -> Vec<u8> {
     let mut new_key = key.to_vec();
 
     if new_key.len() > blocksize {

@@ -44,7 +44,7 @@ pub fn sha1_process_block(h: &mut [u32; SHA1_LEN_BYTES / 4], msg_block: &[u8]) {
     }
 }
 
-pub fn sha1(content: &dyn HashPaddable) -> Vec<u8> {
+pub fn sha1<T: HashPaddable>(content: &T) -> Vec<u8> {
     let padded = content.hashpad(true);
     let mut h = [0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0];
 

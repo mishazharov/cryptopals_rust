@@ -76,7 +76,7 @@ pub fn md4_process_block(h: &mut [u32; MD4_LEN_BYTES / 4], msg_block: &[u8]) {
     }
 }
 
-pub fn md4(data: &dyn HashPaddable) -> Vec<u8> {
+pub fn md4<T: HashPaddable>(data: &T) -> Vec<u8> {
     let mut h: [u32; MD4_LEN_BYTES / 4] = [
         0x67452301,
         0xefcdab89,

@@ -31,7 +31,7 @@ impl HashPaddable for Vec<u8> {
         let eight_from_end = res.len() - 8;
         res[eight_from_end..].copy_from_slice(
             &if big_endian {
-                bitlength.to_be_bytes() 
+                bitlength.to_be_bytes()
             } else {
                 bitlength.to_le_bytes()
             }
@@ -42,6 +42,12 @@ impl HashPaddable for Vec<u8> {
 }
 
 impl HashPaddable for &[u8] {
+    fn hashpad(&self, big_endian: bool) -> Vec<u8> {
+        self.to_vec().hashpad(big_endian)
+    }
+}
+
+impl HashPaddable for &Vec::<u8> {
     fn hashpad(&self, big_endian: bool) -> Vec<u8> {
         self.to_vec().hashpad(big_endian)
     }
