@@ -123,7 +123,6 @@ fn hh(a: u32, b: u32, c: u32, d: u32, k: u32, ss: usize) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::{distributions::Standard, self, Rng};
     use md4::{Md4, Digest};
 
     fn t_md4(data: &[u8]) -> Vec<u8> {
@@ -135,11 +134,7 @@ mod tests {
     #[test]
     fn test_sha4_random() {
         for i in 0..500 {
-            let rng = rand::thread_rng();
-            let data: Vec<u8> = rng
-                .sample_iter(Standard)
-                .take(i)
-                .collect();
+            let data = crate::rng::vec::rand_len(i);
 
             assert_eq!(
                 t_md4(&data),

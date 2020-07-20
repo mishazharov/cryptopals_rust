@@ -16,7 +16,18 @@ const NIST_P: [u8; 192] = hex!(
     fffffffffffff"
 );
 
-struct DiffieHellmanContext {
+pub fn get_nist() -> (BigInt, u64) {
+    return (
+        BigInt::from_radix_be(
+            Plus,
+            &NIST_P,
+            256
+        ).unwrap(),
+        2
+    )
+}
+
+pub struct DiffieHellmanContext {
     pub p: BigInt,
     pub g: BigInt,
     pub public_key: BigInt,
@@ -24,7 +35,7 @@ struct DiffieHellmanContext {
 }
 
 impl DiffieHellmanContext {
-    fn new<T: ToBigInt, Q: ToBigInt>(p: T, g: Q) -> DiffieHellmanContext {
+    pub fn new<T: ToBigInt, Q: ToBigInt>(p: &T, g: &Q) -> DiffieHellmanContext {
         let p = p.to_bigint().unwrap();
         let g = g.to_bigint().unwrap();
 
@@ -42,18 +53,12 @@ impl DiffieHellmanContext {
         }
     }
 
-    fn nist() -> DiffieHellmanContext {
-        DiffieHellmanContext::new(
-            BigInt::from_radix_be(
-                Plus,
-                &NIST_P,
-                256
-            ).unwrap(),
-            2
-        )
+    pub fn nist() -> DiffieHellmanContext {
+        let (p, g) = get_nist();
+        DiffieHellmanContext::new(&p, &g)
     }
 
-    fn make_session_key(&self, pubkey: &BigInt) -> BigInt {
+    pub fn make_session_key(&self, pubkey: &BigInt) -> BigInt {
         let s = pubkey.modpow(&self.private_key, &self.p);
         s
     }

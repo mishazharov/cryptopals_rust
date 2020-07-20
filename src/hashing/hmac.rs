@@ -25,7 +25,6 @@ mod tests {
     use openssl::hash::MessageDigest;
     use openssl::pkey::PKey;
     use openssl::sign::Signer;
-    use rand::{distributions::Standard, Rng, self};
     use crate::hashing::sha1::*;
     use crate::hashing::hash_padding::HASH_BLOCK_LEN_BYTES;
 
@@ -39,16 +38,9 @@ mod tests {
     #[test]
     fn test_sha1_hmac() {
         for i in 0..500 {
-            let mut rng = rand::thread_rng();
-            let data: Vec<u8> = rng
-                .sample_iter(Standard)
-                .take(i)
-                .collect();
+            let data = crate::rng::vec::rand_len(i);
 
-            let key: Vec<u8> = rng
-                .sample_iter(Standard)
-                .take(rng.gen_range(0, 512))
-                .collect();
+            let key = crate::rng::vec::rand_len_range(0, 512);
 
             assert_eq!(
                 t_hmac_sha1(&key, &data),

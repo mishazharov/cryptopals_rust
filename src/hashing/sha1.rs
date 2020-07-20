@@ -83,9 +83,6 @@ fn f(t: usize, b: u32, c: u32, d: u32) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand;
-    use rand::distributions::Standard;
-    use rand::Rng;
 
     #[test]
     fn test_sha1_padding_1() {
@@ -127,11 +124,7 @@ mod tests {
     #[test]
     fn test_sha1_random() {
         for _ in 0..500 {
-            let mut rng = rand::thread_rng();
-            let data: Vec<u8> = rng
-                .sample_iter(Standard)
-                .take(rng.gen_range(0, 512))
-                .collect();
+            let data = crate::rng::vec::rand_len_range(0, 512);
 
             assert_eq!(
                 &openssl::sha::sha1(&data),
