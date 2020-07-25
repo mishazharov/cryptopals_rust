@@ -13,6 +13,7 @@ base64 = "0.12"
 openssl = "0.10"
 rand = "0.7"
 num-bigint = { version = "0.3", features = ["rand"] }
+num-traits = "0.2"
 
 [dev-dependencies]
 tokio = { version = "0.2", features = ["macros"] }
