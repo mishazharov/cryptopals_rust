@@ -18,7 +18,7 @@ impl<'a> Server<'a> {
 
     // Can't implement CryptoWrapper since we have a different return type :(
     pub fn decrypt(&self, ct: &[u8]) -> Result<usize, Vec<u8>> { // Ok(status code), Err(plaintext)
-        let pt = self.crypter.decrypt(ct);
+        let pt = self.crypter.decrypt(ct).unwrap();
         for i in &pt {
             if *i >= 128 {
                 return Err(pt);

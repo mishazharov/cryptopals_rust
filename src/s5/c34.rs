@@ -44,7 +44,7 @@ impl Peer {
         ct
     }
 
-    pub fn aes_decrypt(&self, ct: &[u8]) -> Vec<u8> {
+    pub fn aes_decrypt(&self, ct: &[u8]) -> Result<Vec<u8>, ()> {
         let len = ct.len();
 
         assert_eq!(len % AES_BLOCK_SIZE, 0);
@@ -78,7 +78,7 @@ mod tests {
             let data = crate::rng::vec::rand_len_range(0, 512);
             let ct = alice.aes_encrypt(&data);
             let pt = bob.aes_decrypt(&ct);
-            assert_eq!(data, pt);
+            assert_eq!(data, pt.unwrap());
         }
     }
 
@@ -97,7 +97,7 @@ mod tests {
             let data = crate::rng::vec::rand_len_range(0, 512);
             let ct = alice.aes_encrypt(&data);
             let pt = bob.aes_decrypt(&ct);
-            assert_eq!(data, pt);
+            assert_eq!(data, pt.unwrap());
 
             // Attacker can decrypt
             let mut shared_key = sha1(&vec![0u8]);
@@ -109,7 +109,7 @@ mod tests {
                 &ct[..ct_len - AES_BLOCK_SIZE],
                 Some(ct[ct_len - AES_BLOCK_SIZE..].try_into().unwrap())
             );
-            assert_eq!(attacker_pt, data);
+            assert_eq!(attacker_pt.unwrap(), data);
         }
     }
 }

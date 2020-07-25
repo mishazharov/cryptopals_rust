@@ -16,7 +16,7 @@ impl<'a> ServerOracle<'a> {
     }
 
     pub fn is_client_admin(&self, data_encrypted: Vec<u8>) -> bool {
-        let data_plaintext = self.crypter.decrypt(&data_encrypted);
+        let data_plaintext = self.crypter.decrypt(&data_encrypted).unwrap();
         let data_decrypted_string = String::from_utf8_lossy(&data_plaintext);
         println!("{}", data_decrypted_string);
         data_decrypted_string.contains(";admin=true;")
@@ -37,7 +37,7 @@ impl<'a> IsOracle for ServerOracle<'a> {
         }
 
         vec_contents.extend_from_slice(";comment2=%20like%20a%20pound%20of%20bacon".as_bytes());
-        
+
         self.crypter.encrypt(&vec_contents)
     }
 }

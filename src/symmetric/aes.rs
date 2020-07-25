@@ -6,7 +6,7 @@ use crate::s1::c6::xor_vecs;
 pub const AES_BLOCK_SIZE: usize = 16;
 pub trait CryptoWrapper {
     fn encrypt(&self, plaintext: &[u8]) -> Vec<u8>;
-    fn decrypt(&self, ct: &[u8]) -> Vec<u8>;
+    fn decrypt(&self, ct: &[u8]) -> Result<Vec<u8>, ()>;
 }
 
 pub fn aes_ecb_encrypt(key: &[u8], plaintext: &[u8]) -> Vec<u8> {
@@ -43,16 +43,19 @@ pub fn aes_cbc_encrypt(key: &[u8], plaintext: &[u8], iv: Option<[u8; AES_BLOCK_S
     ciphertext
 }
 
-pub fn aes_cbc_decrypt(key: &[u8], ciphertext: &[u8], iv: Option<[u8; AES_BLOCK_SIZE]>) -> Vec<u8> {
+pub fn aes_cbc_decrypt(key: &[u8], ciphertext: &[u8], iv: Option<[u8; AES_BLOCK_SIZE]>) -> Result<Vec<u8>, ()> {
     let cipher = Cipher::aes_128_cbc();
     let real_iv = iv.unwrap_or_default();
-    let plaintext = decrypt(
+    let plaintext_res = decrypt(
         cipher,
         key,
         Some(&real_iv),
         ciphertext
-    ).unwrap();
-    plaintext
+    );
+    match plaintext_res {
+        Ok(res) => return Ok(res),
+        Err(_) => return Err(())
+    };
 }
 
 pub struct AesCbcWrapper<'a> {
@@ -76,11 +79,11 @@ impl<'a> CryptoWrapper for AesCbcWrapper<'a> {
         aes_cbc_encrypt(self.key, plaintext, self.iv)
     }
 
-    fn decrypt(&self, ct: &[u8]) -> Vec<u8> {
+    fn decrypt(&self, ct: &[u8]) -> Result<Vec<u8>, ()> {
         if self.padding {
             aes_cbc_decrypt(self.key, ct, self.iv)
         } else {
-            aes_cbc_decrypt_nopad(self.key, ct, &self.iv.unwrap_or_default())
+            Ok(aes_cbc_decrypt_nopad(self.key, ct, &self.iv.unwrap_or_default()))
         }
     }
 }
@@ -142,7 +145,7 @@ pub fn aes_ctr_crypt(key: &[u8], text: &[u8], nonce: u64) -> Vec<u8> {
     for i in 0..blocks_needed {
         let bytes_nonce = nonce.to_le_bytes();
         let bytes_ctr = (i as i64).to_le_bytes();
-        
+
         for j in 0..8 {
             keystream_pt[i * AES_BLOCK_SIZE + j] = bytes_nonce[j];
             keystream_pt[i * AES_BLOCK_SIZE + j + 8] = bytes_ctr[j];
@@ -173,7 +176,7 @@ impl<'a> CryptoWrapper for AesCtrWrapper<'a> {
         aes_ctr_crypt(self.key, plaintext, self.nonce)
     }
 
-    fn decrypt(&self, ct: &[u8]) -> Vec<u8> {
-        aes_ctr_crypt(self.key, ct, self.nonce)
+    fn decrypt(&self, ct: &[u8]) -> Result<Vec<u8>, ()> {
+        Ok(aes_ctr_crypt(self.key, ct, self.nonce))
     }
 }
