@@ -62,6 +62,11 @@ impl DiffieHellmanContext {
         let s = pubkey.modpow(&self.private_key, &self.p);
         s
     }
+
+    pub fn set_private_key(&mut self, new_priv_key: &BigInt) {
+        self.private_key = new_priv_key.clone();
+        self.public_key = self.g.modpow(&self.private_key, &self.p);
+    }
 }
 
 #[cfg(test)]
