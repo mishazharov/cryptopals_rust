@@ -8,6 +8,7 @@ mod tests {
     use tokio::sync::oneshot;
     use hyper::{client::Client, Request, Body};
     use serde::{Serialize, Deserialize};
+    use openssl::sha::sha256;
 
     pub type Db = Arc<RwLock<HashMap<String, SrpServer>>>;
 
@@ -23,7 +24,6 @@ mod tests {
 
     fn send_public_key(user_db: Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("send_public_key")
-            .and(warp::path::end())
             .and(warp::body::form())
             .and(with_db(user_db))
             .and(warp::post()).and_then(
@@ -57,7 +57,6 @@ mod tests {
 
     fn verify(user_db: Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         warp::path!("verify")
-            .and(warp::path::end())
             .and(warp::body::form())
             .and(with_db(user_db))
             .and(warp::post()).and_then(
@@ -68,7 +67,10 @@ mod tests {
 
                     match server.is_ok(&hmac) {
                         true => return Ok(warp::reply::reply()),
-                        false => return Err(warp::reject::reject())
+                        false => {
+                            println!("Not authed");
+                            return Err(warp::reject::not_found())
+                        }
                     }
                 }
             )
@@ -99,12 +101,8 @@ mod tests {
         tx
     }
 
-    extern crate pretty_env_logger;
-
     #[tokio::test]
     async fn test_srp_regular() {
-        pretty_env_logger::init();
-
         let db: Db = Arc::new(
             RwLock::new(HashMap::new())
         );
@@ -145,14 +143,46 @@ mod tests {
         tx.send(()).unwrap();
     }
 
-    #[test]
-    fn test_srp_zero() {
+    #[tokio::test]
+    async fn test_srp_zero() {
         let db: Db = Arc::new(
             RwLock::new(HashMap::new())
         );
 
+        let mut c = SrpClient::new();
+
         let tx = start_server(1339, db);
 
+        let req = Request::post("http://127.0.0.1:1339/login/send_public_key")
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(Body::from("username=lol&pkey=00")).unwrap();
+
+        let client = Client::new();
+        let response = client.request(req).await.unwrap();
+        assert_eq!(&response.status(), &hyper::http::StatusCode::OK);
+
+        let body = response.into_body();
+
+        let salt_and_server_pkey: SaltResponse = serde_json::from_slice(
+            &hyper::body::to_bytes(body).await.unwrap()
+        ).unwrap();
+
+        c.attacker_set_shared_key(
+            Some(sha256(&[0u8]).to_vec()),
+            &BigInt::from_bytes_be(
+                Plus,
+                &hex::decode(salt_and_server_pkey.salt).unwrap()
+            )
+        );
+
+        let req = Request::post("http://127.0.0.1:1339/login/verify")
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(Body::from(format!("username=lol&hmac={}", hex::encode(c.get_hmac())))).unwrap();
+
+        let response = client.request(req).await.unwrap();
+        assert_eq!(response.status(), hyper::http::StatusCode::OK);
+
+        // Shut down the server
         tx.send(()).unwrap();
     }
 }

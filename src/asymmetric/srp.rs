@@ -86,7 +86,7 @@ impl SrpServer {
 pub struct SrpClient {
     pub dh: DiffieHellmanContext,
     c_b: Option<BigInt>,
-    salt: Option<BigInt>,
+    pub salt: Option<BigInt>,
     u: Option<BigInt>,
     priv_key: BigInt,
     k: BigInt,
@@ -142,6 +142,12 @@ impl SrpClient {
         signer.update(&self.salt.as_ref().unwrap().to_bytes_be().1).unwrap();
         let hmac = signer.sign_to_vec().unwrap();
         hmac
+    }
+
+    // Allow the attacker to set the state of the client
+    pub fn attacker_set_shared_key(&mut self, key: Option<Vec<u8>>, salt: &BigInt) {
+        self.c_k = key;
+        self.salt = Some(salt.clone());
     }
 }
 
