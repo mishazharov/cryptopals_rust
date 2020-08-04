@@ -19,7 +19,6 @@ pub struct SrpServer {
     k: BigInt,
     salt: BigInt,
     v: BigInt,
-    username: String,
     c_a: Option<BigInt>,
     c_b: Option<BigInt>,
     c_s: Option<BigInt>,
@@ -29,7 +28,7 @@ pub struct SrpServer {
 }
 
 impl SrpServer {
-    fn new(pw: &[u8]) -> SrpServer {
+    pub fn new(pw: &[u8]) -> SrpServer {
         let dh = DiffieHellmanContext::nist();
         let k: BigInt = From::from(3);
 
@@ -44,7 +43,6 @@ impl SrpServer {
             k: k,
             salt: salt,
             v: v,
-            username: String::from("test@example.com"),
             c_a: None,
             c_b: None,
             c_s: None,
@@ -55,11 +53,7 @@ impl SrpServer {
     }
 
     // Returns (salt, B)
-    fn initial_req(&mut self, username: &String, pubkey: &BigInt) -> Result<(BigInt, BigInt), ()> {
-        if &self.username != username {
-            return Err(());
-        }
-
+    pub fn initial_req(&mut self, pubkey: &BigInt) -> Result<(BigInt, BigInt), ()> {
         self.c_a = Some(pubkey.clone());
         self.c_b = Some(&self.k * &self.v + &self.dh.public_key);
 
@@ -76,7 +70,7 @@ impl SrpServer {
         Ok((self.salt.clone(), self.c_b.clone().unwrap()))
     }
 
-    fn is_ok(&self, content: &[u8]) -> bool {
+    pub fn is_ok(&self, content: &[u8]) -> bool {
         let pkey = PKey::hmac(self.c_k.as_ref().unwrap()).unwrap();
         let mut signer = Signer::new(
             MessageDigest::sha256(),
@@ -90,8 +84,7 @@ impl SrpServer {
 }
 
 pub struct SrpClient {
-    dh: DiffieHellmanContext,
-    username: String,
+    pub dh: DiffieHellmanContext,
     c_b: Option<BigInt>,
     salt: Option<BigInt>,
     u: Option<BigInt>,
@@ -101,7 +94,7 @@ pub struct SrpClient {
 }
 
 impl SrpClient {
-    fn new() -> SrpClient {
+    pub fn new() -> SrpClient {
         let mut dh = DiffieHellmanContext::nist();
         let private_key = rand::thread_rng().gen_bigint_range(
             &BigInt::from(2),
@@ -111,7 +104,6 @@ impl SrpClient {
 
         SrpClient{
             dh: dh,
-            username: String::from("test@example.com"),
             c_b: None,
             salt: None,
             u: None,
@@ -121,7 +113,7 @@ impl SrpClient {
         }
     }
 
-    fn set_salt_and_pkey(&mut self, salt: &BigInt, pkey_b: &BigInt, pw: &[u8]) {
+    pub fn set_salt_and_pkey(&mut self, salt: &BigInt, pkey_b: &BigInt, pw: &[u8]) {
         self.salt = Some(salt.clone());
         self.c_b = Some(pkey_b.clone());
         self.u = Some(a_b_to_u(&self.dh.public_key, pkey_b));
@@ -141,7 +133,7 @@ impl SrpClient {
         self.c_k = Some(sha256(&to_hash).to_vec());
     }
 
-    fn get_hmac(&self) -> Vec<u8> {
+    pub fn get_hmac(&self) -> Vec<u8> {
         let pkey = PKey::hmac(self.c_k.as_ref().unwrap()).unwrap();
         let mut signer = Signer::new(
             MessageDigest::sha256(),
@@ -163,7 +155,7 @@ mod tests {
         let mut server = SrpServer::new(password);
 
         let mut client = SrpClient::new();
-        let res = server.initial_req(&client.username, &client.dh.public_key).unwrap();
+        let res = server.initial_req(&client.dh.public_key).unwrap();
 
         client.set_salt_and_pkey(&res.0, &res.1, password);
         assert!(server.is_ok(&client.get_hmac()));

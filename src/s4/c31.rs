@@ -1,11 +1,5 @@
-// If the test starts failing, bump this up
-const SERVER_CMP_SLEEP: u64 = 1;
-// Or increase this one
-const SAMPLE_SIZE: usize = 5;
-
 #[cfg(test)]
 mod tests {
-    use super::*;
     use tokio::sync::oneshot;
     use serde::Deserialize;
     use warp::Filter;
@@ -19,6 +13,11 @@ mod tests {
     // For flushing
     use std::io;
     use std::io::prelude::*;
+
+    // If the test starts failing, bump this up
+    const SERVER_CMP_SLEEP: u64 = 1;
+    // Or increase this one
+    const SAMPLE_SIZE: usize = 5;
 
     #[derive(Deserialize)]
     struct Params {
@@ -63,21 +62,21 @@ mod tests {
             for _ in 0..SAMPLE_SIZE {
                 for guess in 0u8..=255 {
                     hash[index] = guess;
-    
+
                     let uri = format!(
                         "http://localhost:1337/test?file={}&signature={}",
                         new_file,
                         &hex::encode(&hash)
                     );
-    
+
                     let request = Request::get(
                         uri
                     ).body(Body::from("")).unwrap();
-    
+
                     let start = time::Instant::now();
                     let response = client.request(request).await.unwrap();
                     guess_results[guess as usize] = (start.elapsed() + guess_results[guess as usize]) / 2;
-    
+
                     let status = response.status();
                     if status == hyper::StatusCode::OK {
                         println!("\nFound hash on index {}", index);
@@ -90,7 +89,7 @@ mod tests {
                 .enumerate()
                 .max_by(|(_, a), (_, b)| a.cmp(b))
                 .map(|(index, _)| index).unwrap() as u8;
-            
+
             // Used to indicate progress for the impatient types
             print!("{:02x}", res);
             io::stdout().flush().unwrap();
@@ -139,9 +138,9 @@ mod tests {
                     }
                 }
             );
-        
+
         let routes = warp::get().and(broken_endpoint).recover(handle_rejection);
-        
+
         let (tx, rx) = oneshot::channel::<()>();
 
         let (_, server) = warp::serve(routes)
@@ -151,7 +150,7 @@ mod tests {
                     rx.await.ok();
                 }
             );
-        
+
         tokio::task::spawn(server);
 
         let message = "The_spy_has_already_breached_our_defenses".as_bytes();
