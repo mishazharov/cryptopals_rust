@@ -39,7 +39,7 @@ mod tests {
                             ).unwrap();
 
                             let mut db = db.write().unwrap();
-                            db.entry(From::from(username)).or_insert(server);
+                            db.insert(From::from(username), server);
 
                             let mut res: HashMap<String, String> = HashMap::new();
                             res.insert(String::from("salt"), hex::encode(&salt.to_bytes_be().1));
@@ -181,6 +181,61 @@ mod tests {
 
         let response = client.request(req).await.unwrap();
         assert_eq!(response.status(), hyper::http::StatusCode::OK);
+
+        // Shut down the server
+        tx.send(()).unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_srp_n() {
+        let db: Db = Arc::new(
+            RwLock::new(HashMap::new())
+        );
+
+        let mut c = SrpClient::new();
+
+        let tx = start_server(1340, db);
+
+        for i in 0..5 {
+            let req = Request::post("http://127.0.0.1:1340/login/send_public_key")
+            .header("content-type", "application/x-www-form-urlencoded")
+            .body(
+                Body::from(
+                    format!("username=lol&pkey={}",
+                    hex::encode(
+                            &c.dh.p.checked_mul(
+                                &BigInt::from(i)
+                            ).unwrap().to_bytes_be().1
+                        )
+                    )
+                )
+            ).unwrap();
+
+            let client = Client::new();
+            let response = client.request(req).await.unwrap();
+            assert_eq!(&response.status(), &hyper::http::StatusCode::OK);
+
+            let body = response.into_body();
+
+            let salt_and_server_pkey: SaltResponse = serde_json::from_slice(
+                &hyper::body::to_bytes(body).await.unwrap()
+            ).unwrap();
+
+            c.attacker_set_shared_key(
+                Some(sha256(&[0u8]).to_vec()),
+                &BigInt::from_bytes_be(
+                    Plus,
+                    &hex::decode(salt_and_server_pkey.salt).unwrap()
+                )
+            );
+
+            let req = Request::post("http://127.0.0.1:1340/login/verify")
+                .header("content-type", "application/x-www-form-urlencoded")
+                .body(Body::from(format!("username=lol&hmac={}", hex::encode(c.get_hmac())))).unwrap();
+
+            let response = client.request(req).await.unwrap();
+            assert_eq!(response.status(), hyper::http::StatusCode::OK);
+        }
 
         // Shut down the server
         tx.send(()).unwrap();
