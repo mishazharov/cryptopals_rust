@@ -81,6 +81,18 @@ impl SrpServer {
 
         memcmp::eq(&hmac, content)
     }
+
+    // Returns (salt, B, u)
+    pub fn variant_initial_req(&mut self, pubkey: &BigInt) -> Result<(BigInt, BigInt, BigInt), ()> {
+        self.u = Some(BigInt::from(rand::thread_rng().gen::<u128>()));
+
+        let s = self.dh.make_session_key(&(pubkey * self.v.modpow(self.u.as_ref().unwrap(), &self.dh.p)));
+
+        let to_hash = s.to_bytes_be().1;
+        self.c_k = Some(sha256(&to_hash).to_vec());
+
+        return Ok((self.salt.clone(), self.dh.public_key.clone(), self.u.as_ref().unwrap().clone()))
+    }
 }
 
 pub struct SrpClient {
@@ -130,6 +142,19 @@ impl SrpClient {
         );
 
         let to_hash = s.to_bytes_be().1;
+        self.c_k = Some(sha256(&to_hash).to_vec());
+    }
+
+    pub fn set_salt_and_pkey_variant(&mut self, salt: &BigInt, pkey_b: &BigInt, pw: &[u8], u: &BigInt) {
+        self.salt = Some(salt.clone());
+        let mut to_hash = salt.to_bytes_be().1;
+        to_hash.extend_from_slice(pw);
+        let x_h = sha256(&to_hash);
+        let x = BigInt::from_bytes_be(Plus, &x_h);
+
+        let s = pkey_b.modpow(&(&self.priv_key + u * x), &self.dh.p);
+        let to_hash = s.to_bytes_be().1;
+
         self.c_k = Some(sha256(&to_hash).to_vec());
     }
 
